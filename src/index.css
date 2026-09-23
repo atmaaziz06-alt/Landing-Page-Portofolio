@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F8EEE8;
+  --surface-section: #F6E7DF;
+  --surface: #FBEFE9;
+  --surface-hover: #F6E4DA;
+  --text: #171717;
+  --muted: #5F5A57;
+  --accent: #E66F52;
+  --accent-soft: #F4B09D;
+  --border: rgba(23, 23, 23, 0.1);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F8EEE8;
+}
+::-webkit-scrollbar-thumb {
+  background: #E4D3CA;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D8BFB3;
+}
+
+/* Glassmorphism & Surface Utilities */
+.glass-nav {
+  background-color: rgba(248, 238, 232, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-card {
+  background-color: rgba(251, 239, 233, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.ambient-glow {
+  background: radial-gradient(circle, rgba(230, 111, 82, 0.16) 0%, rgba(244, 176, 157, 0.08) 50%, transparent 70%);
+}
+
+.ambient-glow-strong {
+  background: radial-gradient(circle, rgba(230, 111, 82, 0.28) 0%, rgba(244, 176, 157, 0.14) 45%, transparent 75%);
+}
+
+/* Micro-interaction classes */
+.hover-lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+/* Custom image zoom */
+.group:hover .img-zoom {
+  transform: scale(1.05);
+}
+.img-zoom {
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 3D Perspective & Tilt Support */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Glare Sheen for 3D Cards */
+.glare-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.45),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 20;
+}
+.group:hover .glare-overlay,
+.tilt-card:hover .glare-overlay {
+  opacity: 1;
+}
+
+/* Scroll Reveal States */
+.reveal-fade-up {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal-fade-up.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-fade-in {
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+.reveal-fade-in.is-revealed {
+  opacity: 1;
+}
+
+.reveal-scale-up {
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal-scale-up.is-revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Infinite Marquee hover pause */
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Custom Cursor */
+.custom-cursor-dot {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #E66F52;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.custom-cursor-ring {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(230, 111, 82, 0.45);
+  background-color: rgba(230, 111, 82, 0.04);
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              height 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.25s ease, 
+              border-color 0.25s ease,
+              opacity 0.2s ease;
+}
+
+.custom-cursor-ring.cursor-hover {
+  width: 58px;
+  height: 58px;
+  background-color: rgba(230, 111, 82, 0.12);
+  border-color: rgba(230, 111, 82, 0.8);
+}
+
+/* Horizontal Project Auto-Scroll Marquee */
+@keyframes projectMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.project-marquee-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  align-items: stretch;
+  animation: projectMarquee 38s linear infinite;
+  will-change: transform;
+}
+
+.project-marquee-track:hover,
+.project-marquee-track.is-paused {
+  animation-play-state: paused;
+}
+
+/* Smooth Card Grid Staggered Entrance */
+@keyframes cardSmoothFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card-smooth-enter {
+  animation: cardSmoothFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Utility to hide scrollbar while preserving scroll behavior */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
