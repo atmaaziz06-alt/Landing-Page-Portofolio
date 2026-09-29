@@ -190,9 +190,9 @@ function seedInitialData() {
   // 1. Admin User
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
   if (userCount === 0) {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@vezta.com';
-    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin12345';
+    const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
+    const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
+    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam';
     const passwordHash = bcrypt.hashSync(defaultPassword, 10);
 
     const insertUser = db.prepare(`

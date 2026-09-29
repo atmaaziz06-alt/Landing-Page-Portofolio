@@ -149,7 +149,7 @@ export default function AdminLayout() {
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-semibold text-[#171717] truncate">{user?.name || 'Admin'}</p>
-                <p className="text-[11px] text-[#5F5A57] truncate">{user?.email || 'admin@vezta.com'}</p>
+                <p className="text-[11px] text-[#5F5A57] truncate">{user?.email || 'atmaaziz06@gmail.com'}</p>
               </div>
             </div>
 

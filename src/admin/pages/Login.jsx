@@ -123,7 +123,7 @@ export default function Login() {
                   autoComplete="username"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="admin@vezta.com atau admin"
+                  placeholder="atmaaziz06@gmail.com atau atmaaziz06"
                   disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#F8EEE8]/70 focus:bg-white text-sm text-[#171717] placeholder-[#5F5A57]/60 border border-[rgba(23,23,23,0.1)] focus:border-[#E66F52] focus:outline-none focus:ring-2 focus:ring-[#E66F52]/20 transition-all disabled:opacity-50"
                   required
@@ -187,8 +187,8 @@ export default function Login() {
           {/* Quick Credential Hint for Local Setup */}
           <div className="mt-8 pt-6 border-t border-[rgba(23,23,23,0.06)] text-center">
             <p className="text-[11px] text-[#5F5A57]">
-              Akun default: <span className="font-semibold text-[#171717]">admin@vezta.com</span> /{' '}
-              <span className="font-semibold text-[#171717]">admin12345</span>
+              Akun admin: <span className="font-semibold text-[#171717]">atmaaziz06@gmail.com</span> /{' '}
+              <span className="font-semibold text-[#171717]">Albassam</span>
             </p>
           </div>
         </div>
