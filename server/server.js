@@ -35,9 +35,16 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Static uploads directory
-const uploadsDir = path.resolve(__dirname, '../public/uploads');
+const uploadsDir = process.env.VERCEL
+  ? path.resolve('/tmp', 'uploads')
+  : path.resolve(__dirname, '../public/uploads');
+
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  } catch (err) {
+    console.warn('[Uploads] Directory creation warning:', err.message);
+  }
 }
 app.use('/uploads', express.static(uploadsDir));
 
@@ -70,9 +77,11 @@ if (fs.existsSync(distPath)) {
   });
 }
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`[Vezta CMS API] Backend server running on http://localhost:${PORT}`);
-});
+// Start Server (standalone mode, not in Vercel serverless)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[Vezta CMS API] Backend server running on http://localhost:${PORT}`);
+  });
+}
 
 export default app;

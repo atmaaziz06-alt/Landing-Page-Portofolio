@@ -1,6 +1,8 @@
 // server/db.js
 import { DatabaseSync } from 'node:sqlite';
+import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
@@ -19,12 +21,36 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbPath = path.resolve(__dirname, 'portfolio.db');
+
+let dbPath = path.resolve(__dirname, 'portfolio.db');
+
+// Handle Vercel Serverless read-only environment: copy DB to temp directory
+if (process.env.VERCEL) {
+  const tmpDir = os.platform() === 'win32' ? os.tmpdir() : '/tmp';
+  const tmpDbPath = path.resolve(tmpDir, 'portfolio.db');
+  try {
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    if (!fs.existsSync(tmpDbPath)) {
+      if (fs.existsSync(dbPath)) {
+        fs.copyFileSync(dbPath, tmpDbPath);
+      }
+    }
+    dbPath = tmpDbPath;
+  } catch (err) {
+    console.warn('[DB] Could not copy DB to temp dir, using fallback path:', err.message);
+  }
+}
 
 export const db = new DatabaseSync(dbPath);
 
 // Enable WAL mode for performance
-db.exec('PRAGMA journal_mode = WAL;');
+try {
+  db.exec('PRAGMA journal_mode = WAL;');
+} catch (err) {
+  console.warn('[DB] WAL mode not supported in current environment, using default journal mode');
+}
 db.exec('PRAGMA foreign_keys = ON;');
 
 // Initialize Tables

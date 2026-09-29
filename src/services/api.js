@@ -1,7 +1,9 @@
 // src/services/api.js
 // Centralized API client for Vezta Portfolio & CMS
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
+  : '/api';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('vezta_admin_token');
@@ -30,7 +32,11 @@ async function handleResponse(response) {
         window.location.href = '/admin/login?session=expired';
       }
     }
-    const error = new Error(data?.message || `Request failed with status ${response.status}`);
+    let errorMsg = data?.message;
+    if (typeof errorMsg === 'string' && (errorMsg.includes('NOT_FOUND') || errorMsg.includes('<!DOCTYPE') || errorMsg.includes('<html'))) {
+      errorMsg = 'Server API tidak ditemukan (404). Pastikan backend aktif dan rute Vercel telah terpasang.';
+    }
+    const error = new Error(errorMsg || `Request failed with status ${response.status}`);
     error.status = response.status;
     error.data = data;
     throw error;
