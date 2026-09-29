@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, Video, Code2, Briefcase, Sparkles, Layers } from 'lucide-react';
+import { Palette, Bot, Video, Code2, Briefcase, Sparkles, Layers } from 'lucide-react';
 import Reveal from './Reveal';
 
 // ==========================================
@@ -170,6 +170,34 @@ const DriveIcon = () => (
   </svg>
 );
 
+const GoogleFlowIcon = () => (
+  <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+    <rect width="24" height="24" rx="5" fill="#131314" />
+    <defs>
+      <linearGradient id="flow-grad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#4285F4" />
+        <stop offset="35%" stopColor="#A855F7" />
+        <stop offset="70%" stopColor="#EA4335" />
+        <stop offset="100%" stopColor="#FBBC05" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M6 14.5C6 11.5 8.2 9.5 11 9.5C13.8 9.5 14.8 14.5 17.5 14.5C19.2 14.5 20 13.5 20 12C20 9.8 18.2 8 16 8C14.5 8 13.2 8.8 12.5 9.8"
+      stroke="url(#flow-grad)"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+    <circle cx="7" cy="14.5" r="1.5" fill="#4285F4" />
+    <circle cx="17.5" cy="14.5" r="1.5" fill="#FBBC05" />
+  </svg>
+);
+
+const ClaudeIcon = () => (
+  <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 100 100" fill="#CC785C">
+    <path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z" />
+  </svg>
+);
+
 // ==========================================
 // 4 STRUCTURED TOOL COLUMNS AS REQUESTED
 // ==========================================
@@ -189,15 +217,16 @@ const toolColumns = [
     ],
   },
   {
-    id: 'ai-video',
+    id: 'prompting-ai',
     number: '02',
-    category: 'Ai Video Content & Editing Video',
+    category: 'Prompting AI',
     accentColor: '#7B61FF',
-    icon: <Video className="w-4 h-4 text-[#7B61FF]" />,
+    icon: <Bot className="w-4 h-4 text-[#7B61FF]" />,
     items: [
       { name: 'ChatGPT', role: 'Prompting, Script & Creative Ideas', icon: <ChatGPTIcon /> },
       { name: 'Gemini', role: 'Generative AI & Multimodal Brainstorm', icon: <GeminiIcon /> },
-      { name: 'CapCut', role: 'Video Post-Processing & Visual FX', icon: <CapCutIcon /> },
+      { name: 'Google Flow', role: 'Cinematic AI & Workflow Studio', icon: <GoogleFlowIcon /> },
+      { name: 'Claude AI', role: 'Deep Reasoning, Long-form & Analysis', icon: <ClaudeIcon /> },
     ],
   },
   {
@@ -238,6 +267,8 @@ const tickerTools = [
   { name: 'Affinity', icon: <AffinityIcon /> },
   { name: 'ChatGPT', icon: <ChatGPTIcon /> },
   { name: 'Gemini', icon: <GeminiIcon /> },
+  { name: 'Google Flow', icon: <GoogleFlowIcon /> },
+  { name: 'Claude AI', icon: <ClaudeIcon /> },
   { name: 'CapCut', icon: <CapCutIcon /> },
   { name: 'React.js', icon: <ReactIcon /> },
   { name: 'Tailwind CSS', icon: <TailwindIcon /> },
@@ -269,7 +300,7 @@ export default function TrustBar() {
           </span>
         </div>
         <span className="hidden sm:inline-block text-[11px] font-medium text-[#5F5A57]/70">
-          Design • Front-End • Productivity • Video
+          Design • Prompting AI • Front-End • Productivity
         </span>
       </div>
 
@@ -316,7 +347,7 @@ export default function TrustBar() {
               </h2>
             </div>
             <p className="text-sm sm:text-base text-[#5F5A57] max-w-lg leading-relaxed">
-              Daftar perangkat lunak desain grafis, platform AI & video, teknologi front-end, serta aplikasi produktivitas yang saya gunakan dalam mengeksekusi proyek.
+              Daftar perangkat lunak desain grafis, platform Prompting AI, teknologi front-end, serta aplikasi produktivitas yang saya gunakan dalam mengeksekusi proyek.
             </p>
           </div>
         </Reveal>
