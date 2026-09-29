@@ -123,7 +123,7 @@ export default function Login() {
                   autoComplete="username"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="atmaaziz06@gmail.com atau atmaaziz06"
+                  placeholder="email@gmail.com"
                   disabled={isLoading}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#F8EEE8]/70 focus:bg-white text-sm text-[#171717] placeholder-[#5F5A57]/60 border border-[rgba(23,23,23,0.1)] focus:border-[#E66F52] focus:outline-none focus:ring-2 focus:ring-[#E66F52]/20 transition-all disabled:opacity-50"
                   required
