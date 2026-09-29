@@ -77,6 +77,15 @@ if (fs.existsSync(distPath)) {
   });
 }
 
+// Error handling middleware to catch any runtime exceptions
+app.use((err, req, res, next) => {
+  console.error('[Vezta Server Error]:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Terjadi kesalahan pada server backend.'
+  });
+});
+
 // Start Server (standalone mode, not in Vercel serverless)
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
