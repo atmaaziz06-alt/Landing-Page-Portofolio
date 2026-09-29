@@ -10,10 +10,12 @@ import Testimonials from './components/Testimonials';
 import ContactCTA from './components/ContactCTA';
 import Footer from './components/Footer';
 import CustomCursor from './components/CustomCursor';
+import { PortfolioDataProvider } from './context/PortfolioDataContext';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
+    <PortfolioDataProvider>
+      <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
       {/* Smooth Ambient Custom Cursor */}
       <CustomCursor />
 
@@ -50,5 +52,6 @@ export default function App() {
       {/* 9. Minimal Editorial Footer */}
       <Footer />
     </div>
+    </PortfolioDataProvider>
   );
 }

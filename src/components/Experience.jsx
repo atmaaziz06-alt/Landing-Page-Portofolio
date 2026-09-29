@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { experienceData } from '../data/experience';
+import { experienceData as fallbackExperience } from '../data/experience';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import SectionHeading from './SectionHeading';
 import Reveal from './Reveal';
 
 export default function Experience() {
+  const { experience: dynamicExperience } = usePortfolioData();
+  const experienceData = (dynamicExperience && dynamicExperience.length > 0) ? dynamicExperience : fallbackExperience;
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   return (

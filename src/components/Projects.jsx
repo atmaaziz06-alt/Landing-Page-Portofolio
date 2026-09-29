@@ -1,26 +1,35 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Sparkles, ChevronLeft, ChevronRight, Pause, Play, LayoutGrid } from 'lucide-react';
-import { projects } from '../data/projects';
+import { projects as fallbackProjects } from '../data/projects';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import ProjectCard from './ProjectCard';
 import ProjectDetailModal from './ProjectDetailModal';
 import SectionHeading from './SectionHeading';
 import Reveal from './Reveal';
 
 export default function Projects() {
+  const { projects: dynamicProjects } = usePortfolioData();
+  const projects = (dynamicProjects && dynamicProjects.length > 0) ? dynamicProjects : fallbackProjects;
+
   const [selectedProject, setSelectedProject] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isPaused, setIsPaused] = useState(false);
   const scrollContainerRef = useRef(null);
 
-  const categories = ['All', 'Desain Grafis', 'Ai Video Content', 'UI/UX'];
+  // Dynamic categories with default fallback
+  const categories = useMemo(() => {
+    const set = new Set(['All', 'Desain Grafis', 'Ai Video Content', 'UI/UX']);
+    projects.forEach(p => { if (p.category) set.add(p.category); });
+    return Array.from(set);
+  }, [projects]);
 
   // Filter projects by category
   const filteredProjects = useMemo(() => {
     return projects.filter((item) =>
       activeCategory === 'All' ? true : item.category === activeCategory
     );
-  }, [activeCategory]);
+  }, [projects, activeCategory]);
 
   // Marquee projects: dynamically generated to fit continuous infinite loop for ANY category
   const marqueeProjects = useMemo(() => {

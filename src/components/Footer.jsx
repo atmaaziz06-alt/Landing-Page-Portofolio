@@ -1,8 +1,15 @@
 import React from 'react';
-import { ArrowUp } from 'lucide-react';
-import { profileData } from '../data/profile';
+import { ArrowUp, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { profileData as fallbackProfile } from '../data/profile';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 
 export default function Footer() {
+  const { settings, profile } = usePortfolioData();
+  const brand = settings?.brandName || profile?.brandName || fallbackProfile.brandName;
+  const copyright = settings?.footerCopyright || `${brand}. All rights reserved.`;
+  const note = settings?.footerNote || 'Designed & built with intention.';
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -15,17 +22,26 @@ export default function Footer() {
           {/* Left: Brand Monogram & Copyright */}
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-center sm:text-left">
             <div className="flex items-center text-xl font-bold tracking-tight text-[#171717]">
-              <span>Vezta Studio</span>
+              <span>{brand}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-[#E66F52] ml-1 inline-block"></span>
             </div>
             <p className="text-xs sm:text-sm text-[#5F5A57]">
-              © {new Date().getFullYear()} {profileData.brandName}. All rights reserved.
+              © {new Date().getFullYear()} {copyright}
             </p>
           </div>
 
-          {/* Center: Built with Intention */}
-          <div className="text-xs text-[#5F5A57] italic">
-            Designed & built with intention.
+          {/* Center: Built with Intention & Admin portal link */}
+          <div className="flex items-center gap-4 text-xs text-[#5F5A57]">
+            <span className="italic">{note}</span>
+            <span>•</span>
+            <Link
+              to="/admin/login"
+              className="inline-flex items-center gap-1 hover:text-[#E66F52] transition-colors py-1 px-2 rounded-md hover:bg-black/5"
+              title="Admin CMS Portal"
+            >
+              <Lock className="w-3 h-3" />
+              <span>Admin Login</span>
+            </Link>
           </div>
 
           {/* Right: Back to Top Button */}

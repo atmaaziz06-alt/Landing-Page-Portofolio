@@ -1,9 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { ArrowRight, User, Download, Sparkles } from 'lucide-react';
-import { profileData } from '../data/profile';
+import { profileData as fallbackProfile } from '../data/profile';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import Reveal from './Reveal';
 
 export default function Hero() {
+  const { profile: dynamicProfile } = usePortfolioData();
+  const profileData = dynamicProfile || fallbackProfile;
   const portraitSectionRef = useRef(null);
   const [portraitTilt, setPortraitTilt] = useState({ rotateX: 0, rotateY: 0 });
 
@@ -148,7 +151,7 @@ export default function Hero() {
               }}
             >
               <img
-                src="/assets/images/user-portrait.png"
+                src={profileData.avatarUrl || '/assets/images/user-portrait.png'}
                 alt={`Portrait of ${profileData.name}, ${profileData.role}`}
                 className="w-full h-full object-cover scale-105 transition-transform duration-500 hover:scale-110"
                 style={{ objectPosition: 'center 15%' }}

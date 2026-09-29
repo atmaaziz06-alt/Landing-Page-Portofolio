@@ -1,10 +1,12 @@
 import React from 'react';
 import { ArrowRight, Check } from 'lucide-react';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import Stats from './Stats';
 import Reveal from './Reveal';
 import TiltCard from './TiltCard';
 
 export default function About() {
+  const { profile } = usePortfolioData();
   return (
     <section id="about" className="py-20 md:py-28 lg:py-36 bg-[#F6E7DF]/40">
       <div className="max-w-[1240px] mx-auto px-5 sm:px-8">
@@ -27,8 +29,8 @@ export default function About() {
                 className="relative w-full aspect-[4/5] rounded-[28px] overflow-hidden border-4 border-white/70 shadow-subtle bg-[#F8EEE8] group"
               >
                 <img
-                  src="/assets/images/about-user.jpg"
-                  alt="Raditya Atma Aziz"
+                  src={profile?.aboutImageUrl || '/assets/images/about-user.jpg'}
+                  alt={profile?.name || 'Raditya Atma Aziz'}
                   className="w-full h-full object-cover object-top img-zoom"
                   loading="lazy"
                 />
@@ -64,7 +66,7 @@ export default function About() {
               </p>
 
               <p className="text-base text-[#5F5A57] leading-relaxed mb-8">
-                I work with ambitious startups, founders, and creative teams to turn ideas into thoughtful visual experiences. With a background blending typography, user-centered interface architecture, and brand storytelling, I craft systems that don't just look stunning—they solve real human problems and scale alongside growing businesses.
+                {profile?.bio || "I work with ambitious startups, founders, and creative teams to turn ideas into thoughtful visual experiences. With a background blending typography, user-centered interface architecture, and brand storytelling, I craft systems that don't just look stunning—they solve real human problems and scale alongside growing businesses."}
               </p>
             </Reveal>
 

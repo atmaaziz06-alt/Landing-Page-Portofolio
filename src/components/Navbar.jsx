@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 
 export default function Navbar() {
+  const { settings, profile } = usePortfolioData();
+  const brandName = settings?.brandName || profile?.brandName || 'Vezta Studio';
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -43,9 +46,9 @@ export default function Navbar() {
         <a
           href="#"
           className="group flex items-center text-xl sm:text-2xl font-bold tracking-tight text-[#171717] transition-transform duration-200 active:scale-95"
-          aria-label="Vezta Studio Portfolio Home"
+          aria-label={`${brandName} Portfolio Home`}
         >
-          <span>Vezta Studio</span>
+          <span>{brandName}</span>
           <span className="w-1.5 h-1.5 rounded-full bg-[#E66F52] ml-1 inline-block group-hover:scale-125 transition-transform duration-200"></span>
         </a>
 

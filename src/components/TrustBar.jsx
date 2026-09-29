@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Palette, Bot, Video, Code2, Briefcase, Sparkles, Layers } from 'lucide-react';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import Reveal from './Reveal';
 
 // ==========================================
@@ -283,8 +284,106 @@ const tickerTools = [
   { name: 'Notion', icon: <NotionIcon /> },
 ];
 
+const iconMap = {
+  figma: <FigmaIcon />,
+  canva: <CanvaIcon />,
+  photoshop: <PhotoshopIcon />,
+  adobephotoshop: <PhotoshopIcon />,
+  affinity: <AffinityIcon />,
+  chatgpt: <ChatGPTIcon />,
+  gemini: <GeminiIcon />,
+  flow: <GoogleFlowIcon />,
+  googleflow: <GoogleFlowIcon />,
+  claude: <ClaudeIcon />,
+  claudeai: <ClaudeIcon />,
+  capcut: <CapCutIcon />,
+  html: <HtmlIcon />,
+  html5: <HtmlIcon />,
+  css: <CssIcon />,
+  css3: <CssIcon />,
+  js: <JsIcon />,
+  javascript: <JsIcon />,
+  react: <ReactIcon />,
+  reactjs: <ReactIcon />,
+  tailwind: <TailwindIcon />,
+  tailwindcss: <TailwindIcon />,
+  meet: <MeetIcon />,
+  googlemeet: <MeetIcon />,
+  docs: <DocsIcon />,
+  googledocs: <DocsIcon />,
+  sheets: <SheetsIcon />,
+  googlespreadsheet: <SheetsIcon />,
+  zoom: <ZoomIcon />,
+  notion: <NotionIcon />,
+  drive: <DriveIcon />,
+  googledrive: <DriveIcon />
+};
+
+function resolveToolIcon(tool) {
+  if (tool.icon) return tool.icon;
+  if (tool.customIconUrl) {
+    return <img src={tool.customIconUrl} alt={tool.name} className="w-5 h-5 object-contain" />;
+  }
+  const key = (tool.iconKey || tool.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return iconMap[key] || <Sparkles className="w-5 h-5 text-[#E66F52]" />;
+}
+
 export default function TrustBar() {
-  const marqueeList = [...tickerTools, ...tickerTools];
+  const { tools: dynamicTools } = usePortfolioData();
+
+  const activeToolColumns = useMemo(() => {
+    if (!dynamicTools || dynamicTools.length === 0) return toolColumns;
+
+    const categoryMeta = {
+      'Desain': { number: '01', accentColor: '#E66F52', icon: <Palette className="w-4 h-4 text-[#E66F52]" /> },
+      'Prompting AI': { number: '02', accentColor: '#7B61FF', icon: <Bot className="w-4 h-4 text-[#7B61FF]" /> },
+      'Front End Development': { number: '03', accentColor: '#0284C7', icon: <Code2 className="w-4 h-4 text-[#0284C7]" /> },
+      'Office': { number: '04', accentColor: '#059669', icon: <Briefcase className="w-4 h-4 text-[#059669]" /> }
+    };
+
+    const grouped = {};
+    dynamicTools.forEach(t => {
+      const cat = t.category || 'Desain';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({
+        name: t.name,
+        role: t.role,
+        icon: resolveToolIcon(t)
+      });
+    });
+
+    const cols = Object.keys(grouped).map((cat, idx) => {
+      const meta = categoryMeta[cat] || {
+        number: `0${idx + 1}`,
+        accentColor: '#E66F52',
+        icon: <Sparkles className="w-4 h-4 text-[#E66F52]" />
+      };
+      return {
+        id: cat.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        category: cat,
+        number: meta.number,
+        accentColor: meta.accentColor,
+        icon: meta.icon,
+        items: grouped[cat]
+      };
+    });
+
+    return cols.length > 0 ? cols : toolColumns;
+  }, [dynamicTools]);
+
+  const activeTickerTools = useMemo(() => {
+    if (dynamicTools && dynamicTools.length > 0) {
+      return dynamicTools.map(t => ({
+        name: t.name,
+        icon: resolveToolIcon(t)
+      }));
+    }
+    return tickerTools;
+  }, [dynamicTools]);
+
+  const marqueeList = useMemo(() => {
+    return [...activeTickerTools, ...activeTickerTools];
+  }, [activeTickerTools]);
 
   return (
     <section id="tools" className="py-12 sm:py-16 md:py-20 border-y border-[rgba(23,23,23,0.06)] bg-[#F8EEE8] overflow-hidden relative">
@@ -354,7 +453,7 @@ export default function TrustBar() {
 
         {/* 4 Columns Grid Layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-          {toolColumns.map((col, colIdx) => (
+          {activeToolColumns.map((col, colIdx) => (
             <Reveal key={col.id} variant="fade-up">
               <div className="h-full flex flex-col justify-between rounded-[26px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-5 sm:p-6 shadow-sm hover:shadow-subtle transition-all duration-300 hover:-translate-y-1 group">
                 

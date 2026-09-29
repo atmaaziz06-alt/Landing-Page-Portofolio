@@ -1,11 +1,14 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { servicesData } from '../data/services';
+import { servicesData as fallbackServices } from '../data/services';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import SectionHeading from './SectionHeading';
 import Reveal from './Reveal';
 import TiltCard from './TiltCard';
 
 export default function Services() {
+  const { skills: dynamicSkills } = usePortfolioData();
+  const servicesData = (dynamicSkills && dynamicSkills.length > 0) ? dynamicSkills : fallbackServices;
   return (
     <section id="services" className="py-20 md:py-28 lg:py-36">
       <div className="max-w-[1240px] mx-auto px-5 sm:px-8">

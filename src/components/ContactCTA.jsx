@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Mail, Phone, Check } from 'lucide-react';
-import { profileData } from '../data/profile';
+import { profileData as fallbackProfile } from '../data/profile';
+import { usePortfolioData } from '../context/PortfolioDataContext';
 import Reveal from './Reveal';
 
 // Clean, precise social icons
@@ -35,17 +36,24 @@ const SocialIcon = ({ name }) => {
 };
 
 export default function ContactCTA() {
+  const { contact: dynamicContact, socials: dynamicSocials, profile: dynamicProfile } = usePortfolioData();
+  const profileData = dynamicProfile || fallbackProfile;
+  const activeContact = dynamicContact || profileData.contact;
+  const activeSocials = (dynamicSocials && dynamicSocials.length > 0) ? dynamicSocials : profileData.contact.socials;
+
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
 
-  const cleanPhone = (profileData.contact.whatsapp || profileData.contact.phone).replace(/[^0-9]/g, '');
+  const rawPhone = activeContact.whatsapp || activeContact.phone || profileData.contact.whatsapp || profileData.contact.phone || '';
+  const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
   const waNumber = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
   const whatsappUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent("Halo Atma, saya tertarik untuk mendiskusikan proyek baru dengan Anda.")}`;
 
+  const currentEmail = activeContact.email || profileData.contact.email;
   const emailSubject = encodeURIComponent("Project Inquiry — Vezta Studio");
   const emailBody = encodeURIComponent("Halo Atma,\n\nSaya tertarik untuk bekerja sama dalam proyek desain / web dengan Anda.\n\nDetail proyek:\n- Jenis Proyek:\n- Timeline / Deadline:\n- Estimasi Budget:\n\nTerima kasih!");
-  const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${profileData.contact.email}&su=${emailSubject}&body=${emailBody}`;
-  const mailtoUrl = `mailto:${profileData.contact.email}?subject=${emailSubject}&body=${emailBody}`;
+  const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${currentEmail}&su=${emailSubject}&body=${emailBody}`;
+  const mailtoUrl = `mailto:${currentEmail}?subject=${emailSubject}&body=${emailBody}`;
 
   const handleEmailClick = (e) => {
     e.preventDefault();
@@ -106,12 +114,18 @@ export default function ContactCTA() {
                 </span>
 
                 <h2 className="text-3xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-[#171717] leading-[1.1] mb-6">
-                  Let's create something <br />
-                  <span className="text-[#E66F52]">amazing</span> together.
+                  {activeContact.ctaTitle ? (
+                    <span>{activeContact.ctaTitle}</span>
+                  ) : (
+                    <>
+                      Let's create something <br />
+                      <span className="text-[#E66F52]">amazing</span> together.
+                    </>
+                  )}
                 </h2>
 
                 <p className="text-base sm:text-lg text-[#5F5A57] max-w-[520px] leading-relaxed mb-10">
-                  Have a project in mind, an idea to explore, or just want to connect? Let's talk about how we can turn your vision into something meaningful and enduring.
+                  {activeContact.ctaDescription || "Have a project in mind, an idea to explore, or just want to connect? Let's talk about how we can turn your vision into something meaningful and enduring."}
                 </p>
 
                 {/* Direct Reach Info */}
@@ -125,7 +139,7 @@ export default function ContactCTA() {
                     <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center border border-[rgba(23,23,23,0.08)] shadow-xs group-hover:bg-[#E66F52] group-hover:scale-105 transition-all">
                       <Mail className="w-4 h-4 text-[#5F5A57] group-hover:text-white transition-colors" />
                     </div>
-                    <span>{profileData.contact.email}</span>
+                    <span>{currentEmail}</span>
                   </a>
 
                   <a
@@ -139,15 +153,15 @@ export default function ContactCTA() {
                     <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center border border-[rgba(23,23,23,0.08)] shadow-xs group-hover:bg-[#25D366] group-hover:border-[#25D366] group-hover:scale-105 transition-all">
                       <Phone className="w-4 h-4 text-[#5F5A57] group-hover:text-white transition-colors" />
                     </div>
-                    <span>{profileData.contact.phone}</span>
+                    <span>{activeContact.phone || profileData.contact.phone}</span>
                   </a>
                 </div>
 
                 {/* Social Channels */}
                 <div className="flex items-center gap-3">
-                  {profileData.contact.socials.map((social) => (
+                  {activeSocials.map((social) => (
                     <a
-                      key={social.name}
+                      key={social.name || social.id}
                       href={social.url}
                       target="_blank"
                       rel="noopener noreferrer"
