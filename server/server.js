@@ -48,20 +48,27 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/projects', projectsRoutes);
-app.use('/api/experience', experienceRoutes);
-app.use('/api/tools', toolsRoutes);
-app.use('/api/skills', skillsRoutes);
-app.use('/api/contact', contactRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/stats', statsRoutes);
+// API Routes (supports /api/* and /* paths for resilient Vercel rewrites)
+const apiRoutes = [
+  ['/api/auth', '/auth', authRoutes],
+  ['/api/profile', '/profile', profileRoutes],
+  ['/api/projects', '/projects', projectsRoutes],
+  ['/api/experience', '/experience', experienceRoutes],
+  ['/api/tools', '/tools', toolsRoutes],
+  ['/api/skills', '/skills', skillsRoutes],
+  ['/api/contact', '/contact', contactRoutes],
+  ['/api/settings', '/settings', settingsRoutes],
+  ['/api/upload', '/upload', uploadRoutes],
+  ['/api/stats', '/stats', statsRoutes],
+];
+
+for (const [apiPath, altPath, router] of apiRoutes) {
+  app.use(apiPath, router);
+  app.use(altPath, router);
+}
 
 // Health Check
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
 

@@ -3,16 +3,23 @@ import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadDir = path.resolve(__dirname, '../../public/uploads');
+const uploadDir = process.env.VERCEL
+  ? path.resolve(os.tmpdir(), 'uploads')
+  : path.resolve(__dirname, '../../public/uploads');
 
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (err) {
+    console.warn('[Uploads] Directory creation warning:', err.message);
+  }
 }
 
 const storage = multer.diskStorage({

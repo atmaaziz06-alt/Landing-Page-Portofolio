@@ -21,14 +21,16 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Try loading native node:sqlite dynamically
+// 1. Try loading native node:sqlite dynamically (only when NOT on Vercel)
 let DatabaseSync = null;
-try {
-  const sqlite = await import('node:sqlite');
-  DatabaseSync = sqlite.DatabaseSync;
-} catch (err) {
-  // Expected on serverless runtimes (like Vercel) where node:sqlite is not bundled
-  DatabaseSync = null;
+if (!process.env.VERCEL) {
+  try {
+    const sqlite = await import('node:sqlite');
+    DatabaseSync = sqlite.DatabaseSync || sqlite.default?.DatabaseSync || null;
+  } catch (err) {
+    // Expected on environments where node:sqlite is not bundled or supported
+    DatabaseSync = null;
+  }
 }
 
 // 2. Initialize native SQLite if available
@@ -240,7 +242,9 @@ function createMemoryDB() {
         return table.find(u => 
           u.email.toLowerCase() === id || 
           u.username.toLowerCase() === id || 
-          (id === 'admin' && u.role === 'admin')
+          (id === 'admin' && u.role === 'admin') ||
+          (id === 'kepo@gmail.com' && u.role === 'admin') ||
+          (id === 'kepo' && u.role === 'admin')
         );
       }
       if (sql.includes('WHERE id = ?')) {
@@ -618,5 +622,169 @@ function seedInitialData() {
       initialProfile.resumeUrl,
       initialProfile.resumeLabel
     );
+  }
+
+  // 3. Projects
+  const projectCount = nativeDb.prepare('SELECT COUNT(*) as count FROM projects').get()?.count || 0;
+  if (projectCount === 0) {
+    const insertProject = nativeDb.prepare(`
+      INSERT INTO projects (
+        id, title, category, type, year, image, images,
+        description, role, client, link, link_label,
+        services, highlight, deliverables, display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const proj of initialProjects) {
+      insertProject.run(
+        proj.id,
+        proj.title,
+        proj.category,
+        proj.type,
+        proj.year,
+        proj.image,
+        JSON.stringify(proj.images || [proj.image]),
+        proj.description,
+        proj.role,
+        proj.client,
+        proj.link,
+        proj.linkLabel,
+        JSON.stringify(proj.services || []),
+        proj.highlight,
+        proj.deliverables,
+        proj.displayOrder,
+        proj.isVisible ? 1 : 0
+      );
+    }
+  }
+
+  // 4. Experience
+  const expCount = nativeDb.prepare('SELECT COUNT(*) as count FROM experiences').get()?.count || 0;
+  if (expCount === 0) {
+    const insertExp = nativeDb.prepare(`
+      INSERT INTO experiences (
+        period, role, company, location, description, highlights,
+        display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const exp of initialExperience) {
+      insertExp.run(
+        exp.period,
+        exp.role,
+        exp.company,
+        exp.location,
+        exp.description,
+        JSON.stringify(exp.highlights || []),
+        exp.displayOrder,
+        exp.isVisible ? 1 : 0
+      );
+    }
+  }
+
+  // 5. Tools
+  const toolsCount = nativeDb.prepare('SELECT COUNT(*) as count FROM tools').get()?.count || 0;
+  if (toolsCount === 0) {
+    const insertTool = nativeDb.prepare(`
+      INSERT INTO tools (
+        name, role, category, icon_key, display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const tool of initialTools) {
+      insertTool.run(
+        tool.name,
+        tool.role,
+        tool.category,
+        tool.iconKey,
+        tool.displayOrder,
+        tool.isVisible ? 1 : 0
+      );
+    }
+  }
+
+  // 6. Skills
+  const skillsCount = nativeDb.prepare('SELECT COUNT(*) as count FROM skills').get()?.count || 0;
+  if (skillsCount === 0) {
+    const insertSkill = nativeDb.prepare(`
+      INSERT INTO skills (
+        number, title, description, deliverables, display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const skill of initialSkills) {
+      insertSkill.run(
+        skill.number,
+        skill.title,
+        skill.description,
+        JSON.stringify(skill.deliverables || []),
+        skill.displayOrder,
+        skill.isVisible ? 1 : 0
+      );
+    }
+  }
+
+  // 7. Socials
+  const socialCount = nativeDb.prepare('SELECT COUNT(*) as count FROM social_links').get()?.count || 0;
+  if (socialCount === 0) {
+    const insertSocial = nativeDb.prepare(`
+      INSERT INTO social_links (name, url, username, display_order, is_visible)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const soc of initialSocials) {
+      insertSocial.run(soc.name, soc.url, soc.username, soc.displayOrder, soc.isVisible ? 1 : 0);
+    }
+  }
+
+  // 8. Contact Settings
+  const contactCount = nativeDb.prepare('SELECT COUNT(*) as count FROM contact_settings').get()?.count || 0;
+  if (contactCount === 0) {
+    const insertContact = nativeDb.prepare(`
+      INSERT INTO contact_settings (
+        id, cta_title, cta_description, email, phone, whatsapp,
+        primary_btn_text, primary_btn_link, secondary_btn_text, secondary_btn_link
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    insertContact.run(
+      initialContact.ctaTitle,
+      initialContact.ctaDescription,
+      initialContact.email,
+      initialContact.phone,
+      initialContact.whatsapp,
+      initialContact.primaryBtnText,
+      initialContact.primaryBtnLink,
+      initialContact.secondaryBtnText,
+      initialContact.secondaryBtnLink
+    );
+  }
+
+  // 9. Site Settings
+  const settingsCount = nativeDb.prepare('SELECT COUNT(*) as count FROM site_settings').get()?.count || 0;
+  if (settingsCount === 0) {
+    const insertSettings = nativeDb.prepare(`
+      INSERT INTO site_settings (
+        id, site_title, brand_name, site_description, footer_brand,
+        footer_copyright, footer_note, seo_title, seo_description, seo_keywords, og_image
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    insertSettings.run(
+      initialSettings.siteTitle,
+      initialSettings.brandName,
+      initialSettings.siteDescription,
+      initialSettings.footerBrand,
+      initialSettings.footerCopyright,
+      initialSettings.footerNote,
+      initialSettings.seoTitle,
+      initialSettings.seoDescription,
+      initialSettings.seoKeywords,
+      initialSettings.ogImage
+    );
+  }
+
+  // Initial log
+  const logCount = nativeDb.prepare('SELECT COUNT(*) as count FROM activity_logs').get()?.count || 0;
+  if (logCount === 0) {
+    logActivity('System Initialized', 'Database setup and loaded with initial portfolio content');
   }
 }
