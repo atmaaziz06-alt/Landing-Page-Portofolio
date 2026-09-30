@@ -258,27 +258,57 @@ export const iconMap = {
   googledrive: <DriveIcon />
 };
 
+export function ToolImage({ src, alt, fallback }) {
+  const [hasError, setHasError] = React.useState(false);
+
+  // If the src changes, reset error state
+  React.useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (hasError || !src) return fallback;
+
+  return (
+    <img
+      src={src}
+      alt={alt || 'Tool'}
+      className="w-5 h-5 object-contain"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export function resolveToolIcon(tool) {
   if (!tool) return <Wrench className="w-5 h-5 text-[#5F5A57]" />;
   if (tool.icon) return tool.icon;
+
+  const getFallback = () => {
+    const key = (tool.iconKey || tool.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (iconMap[key]) return iconMap[key];
+
+    switch (tool.category) {
+      case 'Desain':
+        return <Palette className="w-5 h-5 text-[#E66F52]" />;
+      case 'Prompting AI':
+        return <Bot className="w-5 h-5 text-[#7B61FF]" />;
+      case 'Front End Development':
+        return <Code2 className="w-5 h-5 text-[#0284C7]" />;
+      case 'Office':
+        return <Briefcase className="w-5 h-5 text-[#059669]" />;
+      default:
+        return <Sparkles className="w-5 h-5 text-[#E66F52]" />;
+    }
+  };
+
   if (tool.customIconUrl) {
-    return <img src={tool.customIconUrl} alt={tool.name || 'Tool'} className="w-5 h-5 object-contain" />;
+    return (
+      <ToolImage
+        src={tool.customIconUrl}
+        alt={tool.name}
+        fallback={getFallback()}
+      />
+    );
   }
 
-  const key = (tool.iconKey || tool.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (iconMap[key]) return iconMap[key];
-
-  // Category fallback
-  switch (tool.category) {
-    case 'Desain':
-      return <Palette className="w-5 h-5 text-[#E66F52]" />;
-    case 'Prompting AI':
-      return <Bot className="w-5 h-5 text-[#7B61FF]" />;
-    case 'Front End Development':
-      return <Code2 className="w-5 h-5 text-[#0284C7]" />;
-    case 'Office':
-      return <Briefcase className="w-5 h-5 text-[#059669]" />;
-    default:
-      return <Sparkles className="w-5 h-5 text-[#E66F52]" />;
-  }
+  return getFallback();
 }

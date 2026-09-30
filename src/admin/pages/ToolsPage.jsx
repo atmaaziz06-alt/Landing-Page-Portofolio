@@ -255,19 +255,77 @@ export default function ToolsPage() {
     }
   };
 
+  const compressIcon = (file) => {
+    return new Promise((resolve) => {
+      if (file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 128;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/png', 0.92);
+          resolve(dataUrl);
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleIconUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran icon maksimal 5MB.');
+      return;
+    }
+
     setUploadingIcon(true);
     try {
-      const res = await api.uploadFile(file);
-      const uploadedUrl = res.url || res.data?.url || res.data;
-      if (res.success && uploadedUrl) {
-        setFormData((prev) => ({ ...prev, customIconUrl: uploadedUrl }));
-        toast.success('Icon custom berhasil diunggah!');
+      // Generate optimized Data URL for instant, reliable & permanent preview
+      const dataUrl = await compressIcon(file);
+      if (dataUrl) {
+        setFormData((prev) => ({ ...prev, customIconUrl: dataUrl }));
+        toast.success('Icon custom berhasil dipasang!');
       } else {
-        toast.error(res.message || 'Gagal mengunggah icon.');
+        toast.error('Gagal memproses file icon.');
       }
+
+      // Also upload to server in background if available
+      try {
+        await api.uploadFile(file);
+      } catch (_) {}
     } catch (err) {
       toast.error('Gagal mengunggah icon: ' + err.message);
     } finally {
