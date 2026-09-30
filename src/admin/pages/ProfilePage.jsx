@@ -58,9 +58,17 @@ export default function ProfilePage() {
     async function loadProfile() {
       try {
         const res = await api.getProfile();
+        let localOverride = null;
+        try {
+          const stored = localStorage.getItem('vezta_profile_override');
+          if (stored) localOverride = JSON.parse(stored);
+        } catch (_) {}
+
         if (res.success && res.data) {
           setFormData({
             ...res.data,
+            avatarUrl: localOverride?.avatarUrl || res.data.avatarUrl || '',
+            aboutImageUrl: localOverride?.aboutImageUrl || res.data.aboutImageUrl || '',
             availability: res.data.availability || {}
           });
         }
@@ -134,18 +142,47 @@ export default function ProfilePage() {
     });
   };
 
-  const handleCropComplete = (croppedDataUrl) => {
-    if (cropModal.type === 'avatar') {
-      setFormData((prev) => ({ ...prev, avatarUrl: croppedDataUrl }));
-      toast.success('Foto Avatar berhasil dipotong & disesuaikan. Jangan lupa klik "Simpan Perubahan"!');
-    } else {
-      setFormData((prev) => ({ ...prev, aboutImageUrl: croppedDataUrl }));
-      toast.success('Foto About berhasil dipotong & disesuaikan. Jangan lupa klik "Simpan Perubahan"!');
+  const handleCropComplete = async (croppedDataUrl) => {
+    const isAvatar = cropModal.type === 'avatar';
+    const fieldName = isAvatar ? 'avatarUrl' : 'aboutImageUrl';
+    const updatedData = {
+      ...formData,
+      [fieldName]: croppedDataUrl
+    };
+    setFormData(updatedData);
+
+    // Save locally to guarantee persistence across serverless reboots
+    try {
+      const stored = localStorage.getItem('vezta_profile_override');
+      const prev = stored ? JSON.parse(stored) : {};
+      localStorage.setItem('vezta_profile_override', JSON.stringify({
+        ...prev,
+        [fieldName]: croppedDataUrl
+      }));
+    } catch (e) {
+      console.warn('LocalStorage error:', e);
+    }
+
+    // Auto-save immediately to database
+    try {
+      setIsSaving(true);
+      const res = await api.updateProfile(updatedData);
+      if (res.success) {
+        toast.success(`Foto ${isAvatar ? 'Hero Avatar' : 'About'} berhasil diperbarui & langsung tersimpan!`);
+        if (portfolioData?.refreshData) {
+          portfolioData.refreshData();
+        }
+      }
+    } catch (err) {
+      console.warn('Auto-save error:', err);
+      toast.info('Foto berhasil disesuaikan di halaman ini. Klik "Simpan Perubahan" untuk konfirmasi manual.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!formData.name.trim()) {
       toast.error('Nama lengkap wajib diisi.');
       return;
@@ -157,6 +194,14 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
+      // Save local backup as well
+      try {
+        localStorage.setItem('vezta_profile_override', JSON.stringify({
+          avatarUrl: formData.avatarUrl,
+          aboutImageUrl: formData.aboutImageUrl
+        }));
+      } catch (_) {}
+
       const res = await api.updateProfile(formData);
       if (res.success) {
         toast.success('Profil & foto berhasil diperbarui dan tersimpan di database!');

@@ -14,7 +14,20 @@ import { servicesData as fallbackServices } from '../data/services';
 const PortfolioDataContext = createContext(null);
 
 export function PortfolioDataProvider({ children }) {
-  const [profile, setProfile] = useState(fallbackProfile);
+  const [profile, setProfile] = useState(() => {
+    try {
+      const stored = localStorage.getItem('vezta_profile_override');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          ...fallbackProfile,
+          ...(parsed.avatarUrl ? { avatarUrl: parsed.avatarUrl } : {}),
+          ...(parsed.aboutImageUrl ? { aboutImageUrl: parsed.aboutImageUrl } : {})
+        };
+      }
+    } catch (_) {}
+    return fallbackProfile;
+  });
   const [projects, setProjects] = useState(fallbackProjects);
   const [experience, setExperience] = useState(fallbackExperience);
   const [skills, setSkills] = useState(fallbackServices);
@@ -46,6 +59,12 @@ export function PortfolioDataProvider({ children }) {
     try {
       // 1. Profile
       const pRes = await api.getProfile().catch(() => null);
+      let localOverride = null;
+      try {
+        const stored = localStorage.getItem('vezta_profile_override');
+        if (stored) localOverride = JSON.parse(stored);
+      } catch (_) {}
+
       if (pRes?.success && pRes.data) {
         setProfile((prev) => ({
           ...prev,
@@ -58,12 +77,18 @@ export function PortfolioDataProvider({ children }) {
           headlinePrefix: pRes.data.headlinePrefix || prev.headlinePrefix,
           description: pRes.data.description || prev.description,
           bio: pRes.data.bio || prev.bio,
-          avatarUrl: pRes.data.avatarUrl || prev.avatarUrl,
-          aboutImageUrl: pRes.data.aboutImageUrl || prev.aboutImageUrl,
+          avatarUrl: localOverride?.avatarUrl || pRes.data.avatarUrl || prev.avatarUrl,
+          aboutImageUrl: localOverride?.aboutImageUrl || pRes.data.aboutImageUrl || prev.aboutImageUrl,
           availability: {
             ...prev.availability,
             ...(pRes.data.availability || {})
           }
+        }));
+      } else if (localOverride) {
+        setProfile((prev) => ({
+          ...prev,
+          avatarUrl: localOverride.avatarUrl || prev.avatarUrl,
+          aboutImageUrl: localOverride.aboutImageUrl || prev.aboutImageUrl
         }));
       }
 
