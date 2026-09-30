@@ -237,3 +237,16 @@ body {
   scrollbar-width: none;
 }
 
+/* Toast auto-dismiss progress bar animation */
+@keyframes toastProgressBar {
+  0% {
+    width: 100%;
+    opacity: 0.95;
+  }
+  100% {
+    width: 0%;
+    opacity: 0.35;
+  }
+}
+
+

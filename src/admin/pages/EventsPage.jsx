@@ -22,7 +22,8 @@ import {
   ExternalLink,
   Award,
   Crop as CropIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function EventsPage() {
