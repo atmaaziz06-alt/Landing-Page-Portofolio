@@ -4,8 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
+import CategoryManageModal from '../components/CategoryManageModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
+import { resolveToolIcon } from '../../utils/toolIcons';
 import {
   Wrench,
   Plus,
@@ -22,7 +24,11 @@ import {
   Code2,
   Briefcase,
   Palette,
-  Check
+  Check,
+  Tag,
+  ChevronDown,
+  SlidersHorizontal,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function ToolsPage() {
@@ -38,6 +44,10 @@ export default function ToolsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  // Category Manage Modal
+  const [isManageCatOpen, setIsManageCatOpen] = useState(false);
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -77,8 +87,45 @@ export default function ToolsPage() {
       try {
         localStorage.setItem('vezta_tool_custom_categories', JSON.stringify(updated));
       } catch (_) {}
-      toast.success(`Kategori tool "${trimmed}" berhasil ditambahkan!`);
+      toast.success(`Kategori "${trimmed}" berhasil ditambahkan!`);
     }
+  };
+
+  const handleDeleteCategory = async (catToDelete, fallbackCategory) => {
+    // 1. Reassign affected tools
+    const affected = tools.filter((t) => (t.category || '').trim() === catToDelete);
+    if (affected.length > 0) {
+      for (const t of affected) {
+        await api.updateTool(t.id, {
+          name: t.name,
+          role: t.role,
+          category: fallbackCategory,
+          iconKey: t.iconKey,
+          customIconUrl: t.customIconUrl,
+          displayOrder: t.displayOrder,
+          isVisible: t.isVisible
+        });
+      }
+      setTools((prev) =>
+        prev.map((t) =>
+          (t.category || '').trim() === catToDelete ? { ...t, category: fallbackCategory } : t
+        )
+      );
+    }
+
+    // 2. Remove from custom categories
+    const updated = customToolCategories.filter((c) => c !== catToDelete);
+    setCustomToolCategories(updated);
+    try {
+      localStorage.setItem('vezta_tool_custom_categories', JSON.stringify(updated));
+    } catch (_) {}
+
+    // 3. Reset selected filter if needed
+    if (selectedCategory === catToDelete) {
+      setSelectedCategory('ALL');
+    }
+
+    toast.success(`Kategori "${catToDelete}" berhasil dihapus.`);
   };
 
   const handleMoveCategory = async (tool, newCategory) => {
@@ -145,7 +192,7 @@ export default function ToolsPage() {
     setFormData({
       name: '',
       role: '',
-      category: selectedCategory !== 'ALL' ? selectedCategory : 'Desain',
+      category: selectedCategory !== 'ALL' ? selectedCategory : (categories[0] || 'Desain'),
       iconKey: '',
       customIconUrl: '',
       displayOrder: tools.length + 1,
@@ -208,6 +255,23 @@ export default function ToolsPage() {
     }
   };
 
+  const handleIconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const res = await api.uploadImage(file);
+      if (res.success && res.data?.url) {
+        setFormData((prev) => ({ ...prev, customIconUrl: res.data.url }));
+        toast.success('Icon custom berhasil diunggah!');
+      }
+    } catch (err) {
+      toast.error('Gagal mengunggah icon: ' + err.message);
+    } finally {
+      setUploadingIcon(false);
+    }
+  };
+
   const handleSaveForm = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -256,31 +320,30 @@ export default function ToolsPage() {
     }
   };
 
-  // Filter tools
-  const filteredTools = tools.filter((t) => {
+  const filteredTools = tools.filter((item) => {
     const matchesSearch =
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchQuery.toLowerCase());
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.role && item.role.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesCat =
-      selectedCategory === 'ALL' ? true : t.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'ALL' || item.category === selectedCategory;
 
-    return matchesSearch && matchesCat;
+    return matchesSearch && matchesCategory;
   });
 
   const getCategoryIcon = (cat) => {
     switch (cat) {
       case 'Desain':
-        return <Palette className="w-4 h-4 text-[#E66F52]" />;
+        return <Palette className="w-3.5 h-3.5 text-[#E66F52]" />;
       case 'Prompting AI':
-        return <Bot className="w-4 h-4 text-[#7B61FF]" />;
+        return <Bot className="w-3.5 h-3.5 text-[#7B61FF]" />;
       case 'Front End Development':
-        return <Code2 className="w-4 h-4 text-[#0284C7]" />;
+        return <Code2 className="w-3.5 h-3.5 text-[#0284C7]" />;
       case 'Office':
-        return <Briefcase className="w-4 h-4 text-[#059669]" />;
+        return <Briefcase className="w-3.5 h-3.5 text-[#059669]" />;
       default:
-        return <Wrench className="w-4 h-4 text-[#5F5A57]" />;
+        return <Sparkles className="w-3.5 h-3.5 text-[#E66F52]" />;
     }
   };
 
@@ -297,14 +360,26 @@ export default function ToolsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Tool</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsManageCatOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-neutral-100 text-[#171717] text-xs sm:text-sm font-medium border border-[rgba(23,23,23,0.08)] shadow-2xs transition-all duration-200 cursor-pointer"
+            title="Kelola Kategori (Tambah & Hapus)"
+          >
+            <Tag className="w-4 h-4 text-[#E66F52]" />
+            <span>Kelola Kategori</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Tool</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
@@ -317,36 +392,45 @@ export default function ToolsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari tool atau fungsi..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.08)] text-xs sm:text-sm focus:border-[#E66F52] focus:outline-none"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.08)] text-xs sm:text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
             <button
               type="button"
               onClick={() => setSelectedCategory('ALL')}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                 selectedCategory === 'ALL'
-                  ? 'bg-[#171717] text-white'
+                  ? 'bg-[#171717] text-white shadow-2xs'
                   : 'bg-white/80 text-[#5F5A57] hover:bg-white hover:text-[#171717]'
               }`}
             >
               Semua ({tools.length})
             </button>
             {categories.map((cat) => {
-              const count = tools.filter((t) => t.category === cat).length;
+              const count = tools.filter((t) => (t.category || '').trim() === cat).length;
               return (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
                     selectedCategory === cat
                       ? 'bg-[#E66F52] text-white shadow-2xs'
                       : 'bg-white/80 text-[#5F5A57] hover:bg-white hover:text-[#171717]'
                   }`}
                 >
-                  {cat} ({count})
+                  <span>{cat}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+                      selectedCategory === cat
+                        ? 'bg-white/25 text-white'
+                        : 'bg-black/5 text-[#5F5A57]'
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
@@ -408,7 +492,7 @@ export default function ToolsPage() {
         </div>
       </div>
 
-      {/* Tools List */}
+      {/* Tools Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Loader2 className="w-8 h-8 text-[#E66F52] animate-spin mb-3" />
@@ -423,91 +507,105 @@ export default function ToolsPage() {
           onAction={openAddModal}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredTools.map((item, index) => (
             <div
               key={item.id}
-              className={`rounded-[22px] bg-[#FBEFE9] border p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 ${
-                item.isVisible ? 'border-[rgba(23,23,23,0.08)] hover:bg-white shadow-2xs' : 'border-stone-200 opacity-70 bg-stone-50'
+              className={`group relative rounded-[24px] bg-white border p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 ${
+                item.isVisible
+                  ? 'border-[rgba(23,23,23,0.08)] hover:border-[#E66F52]/40 shadow-xs hover:shadow-card'
+                  : 'border-dashed border-stone-300 opacity-60 bg-stone-50/80'
               }`}
             >
-              <div className="flex items-start gap-3">
-                {/* Reorder Up/Down */}
-                <div className="flex flex-col gap-0.5 pt-0.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleMoveOrder(index, 'up')}
-                    disabled={index === 0}
-                    className="p-1 rounded-md text-[#5F5A57] hover:text-[#171717] hover:bg-black/5 disabled:opacity-30 cursor-pointer"
-                    title="Pindahkan ke atas"
-                  >
-                    <MoveUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMoveOrder(index, 'down')}
-                    disabled={index === filteredTools.length - 1}
-                    className="p-1 rounded-md text-[#5F5A57] hover:text-[#171717] hover:bg-black/5 disabled:opacity-30 cursor-pointer"
-                    title="Pindahkan ke bawah"
-                  >
-                    <MoveDown className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-[rgba(23,23,23,0.06)] flex-shrink-0 shadow-2xs">
-                  {getCategoryIcon(item.category)}
-                </div>
-
-                <div className="space-y-0.5 flex-grow min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-semibold text-[#171717] truncate">
-                      {item.name}
-                    </h3>
+              <div>
+                {/* Header: Tool Icon & Reorder Controls */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FBEFE9]/70 border border-[rgba(23,23,23,0.06)] flex items-center justify-center p-2.5 shadow-2xs group-hover:scale-105 transition-transform duration-200">
+                    {resolveToolIcon(item)}
                   </div>
-                  <p className="text-xs text-[#5F5A57] line-clamp-1">{item.role}</p>
-                  
-                  {/* Category Badge with Quick Transfer Selector */}
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="text-[10px] text-[#5F5A57] font-medium">Kategori:</span>
-                    <select
-                      value={item.category}
-                      onChange={(e) => handleMoveCategory(item, e.target.value)}
-                      title="Pindahkan ke kategori lain"
-                      className="text-[10px] font-semibold text-[#171717] bg-white border border-[rgba(23,23,23,0.12)] hover:border-[#E66F52] rounded-md px-1.5 py-0.5 cursor-pointer outline-none transition-colors"
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
+
+                  {/* Sleek Order Reorder Pill */}
+                  <div className="flex items-center bg-[#FBEFE9]/60 hover:bg-[#FBEFE9] rounded-xl px-2.5 py-1 border border-[rgba(23,23,23,0.06)] shadow-2xs transition-colors">
+                    <span className="text-[11px] font-mono font-semibold text-[#5F5A57]">
+                      #{item.displayOrder}
+                    </span>
+                    <div className="flex items-center ml-2 pl-2 border-l border-[rgba(23,23,23,0.1)] gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveOrder(index, 'up')}
+                        disabled={index === 0}
+                        className="p-0.5 rounded text-[#5F5A57] hover:text-[#171717] hover:bg-black/5 disabled:opacity-20 cursor-pointer transition-colors"
+                        title="Pindahkan ke atas"
+                      >
+                        <MoveUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveOrder(index, 'down')}
+                        disabled={index === filteredTools.length - 1}
+                        className="p-0.5 rounded text-[#5F5A57] hover:text-[#171717] hover:bg-black/5 disabled:opacity-20 cursor-pointer transition-colors"
+                        title="Pindahkan ke bawah"
+                      >
+                        <MoveDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tool Title & Role */}
+                <div className="mt-3.5 space-y-1">
+                  <h3 className="text-base font-semibold text-[#171717] tracking-tight group-hover:text-[#E66F52] transition-colors truncate">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs text-[#5F5A57] line-clamp-2 leading-relaxed min-h-[32px]">
+                    {item.role || 'Tidak ada keterangan fungsi.'}
+                  </p>
+                </div>
+
+                {/* Category Pill Tag (Clickable / Quick Transfer Selector) */}
+                <div className="mt-3 flex items-center">
+                  <div className="relative inline-flex items-center group/cat">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-[#FBEFE9] text-[#171717] border border-[rgba(23,23,23,0.06)] hover:border-[#E66F52] shadow-2xs transition-colors">
+                      {getCategoryIcon(item.category)}
+                      <select
+                        value={item.category}
+                        onChange={(e) => handleMoveCategory(item, e.target.value)}
+                        title="Klik untuk memindahkan ke kategori lain"
+                        className="bg-transparent text-[11px] font-semibold text-[#171717] cursor-pointer outline-none appearance-none pr-4.5"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3 h-3 text-[#5F5A57] absolute right-2.5 pointer-events-none group-hover/cat:text-[#E66F52] transition-colors" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom Actions */}
-              <div className="mt-3 pt-3 border-t border-[rgba(23,23,23,0.06)] flex items-center justify-between">
-                <span className="text-[11px] font-mono text-[#5F5A57]">Order: #{item.displayOrder}</span>
-                <div className="flex items-center gap-1.5">
-                  <StatusBadge
-                    isVisible={item.isVisible}
-                    onClick={() => handleToggleVisibility(item)}
-                  />
+              {/* Bottom Footer: Visibility & Edit/Delete Actions */}
+              <div className="mt-4 pt-3.5 border-t border-[rgba(23,23,23,0.06)] flex items-center justify-between">
+                <StatusBadge
+                  isVisible={item.isVisible}
+                  onClick={() => handleToggleVisibility(item)}
+                />
 
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => openEditModal(item)}
-                    className="p-1.5 rounded-lg text-[#5F5A57] hover:text-[#171717] hover:bg-white transition-colors cursor-pointer"
-                    title="Edit tool"
+                    className="p-2 rounded-xl text-[#5F5A57] hover:text-[#171717] hover:bg-[#FBEFE9] transition-all cursor-pointer shadow-2xs hover:shadow-subtle"
+                    title="Edit Tool"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(item)}
-                    className="p-1.5 rounded-lg text-[#5F5A57] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                    title="Hapus tool"
+                    className="p-2 rounded-xl text-[#5F5A57] hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer shadow-2xs hover:shadow-subtle"
+                    title="Hapus Tool"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -517,6 +615,19 @@ export default function ToolsPage() {
           ))}
         </div>
       )}
+
+      {/* CATEGORY MANAGEMENT MODAL */}
+      <CategoryManageModal
+        isOpen={isManageCatOpen}
+        onClose={() => setIsManageCatOpen(false)}
+        title="Kelola Kategori Tools"
+        itemTypeLabel="tool"
+        categories={categories}
+        items={tools}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+        defaultFallback="Desain"
+      />
 
       {/* ADD / EDIT TOOL MODAL */}
       {isFormOpen && (
@@ -552,8 +663,8 @@ export default function ToolsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Contoh: Figma, CapCut, Illustrator"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                  placeholder="Contoh: Figma, CapCut, Illustrator, ChatGPT"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
                   required
                 />
               </div>
@@ -566,7 +677,7 @@ export default function ToolsPage() {
                   <button
                     type="button"
                     onClick={() => setIsAddingCategoryForm(!isAddingCategoryForm)}
-                    className="text-[11px] font-medium text-[#E66F52] hover:underline flex items-center gap-1"
+                    className="text-[11px] font-medium text-[#E66F52] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>{isAddingCategoryForm ? 'Pilih dari List' : '+ Kategori Baru'}</span>
@@ -593,16 +704,16 @@ export default function ToolsPage() {
                           setIsAddingCategoryForm(false);
                         }
                       }}
-                      className="px-3 py-2.5 rounded-xl bg-[#E66F52] text-white text-xs font-semibold hover:bg-[#D65F42]"
+                      className="px-4 py-2.5 rounded-xl bg-[#E66F52] text-white text-xs font-semibold hover:bg-[#D65F42] cursor-pointer"
                     >
-                      Pakai
+                      Gunakan
                     </button>
                   </div>
                 ) : (
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -619,9 +730,50 @@ export default function ToolsPage() {
                   type="text"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  placeholder="UI/UX Design & Prototyping"
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                  placeholder="Contoh: UI/UX Design & Prototyping"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
                 />
+              </div>
+
+              {/* Custom Icon Upload (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-[#171717] mb-1.5">
+                  Icon Kustom (Opsional)
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] flex items-center justify-center p-2 shadow-2xs flex-shrink-0">
+                    {resolveToolIcon({
+                      name: formData.name,
+                      customIconUrl: formData.customIconUrl,
+                      category: formData.category
+                    })}
+                  </div>
+                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white border border-dashed border-[rgba(23,23,23,0.2)] hover:border-[#E66F52] text-xs font-medium text-[#5F5A57] hover:text-[#171717] cursor-pointer transition-colors shadow-2xs">
+                    {uploadingIcon ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-[#E66F52]" />
+                    ) : (
+                      <Upload className="w-4 h-4 text-[#E66F52]" />
+                    )}
+                    <span>{formData.customIconUrl ? 'Ganti Icon Gambar' : 'Unggah Icon (PNG/SVG)'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleIconUpload}
+                      disabled={uploadingIcon}
+                      className="hidden"
+                    />
+                  </label>
+                  {formData.customIconUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, customIconUrl: '' })}
+                      className="p-2 rounded-xl text-stone-400 hover:text-red-500 hover:bg-white transition-colors"
+                      title="Hapus icon kustom dan gunakan default"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -633,7 +785,7 @@ export default function ToolsPage() {
                     type="number"
                     value={formData.displayOrder}
                     onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
                   />
                 </div>
 
@@ -644,7 +796,7 @@ export default function ToolsPage() {
                   <select
                     value={formData.isVisible ? 'true' : 'false'}
                     onChange={(e) => setFormData({ ...formData, isVisible: e.target.value === 'true' })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none shadow-2xs"
                   >
                     <option value="true">● Visible</option>
                     <option value="false">○ Hidden</option>

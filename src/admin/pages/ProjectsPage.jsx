@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
+import CategoryManageModal from '../components/CategoryManageModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import {
@@ -111,6 +112,40 @@ export default function ProjectsPage() {
       } catch (_) {}
       toast.success(`Kategori "${trimmed}" berhasil ditambahkan!`);
     }
+  };
+
+  const [isManageCatOpen, setIsManageCatOpen] = useState(false);
+
+  const handleDeleteCategory = async (catToDelete, fallbackCategory) => {
+    // 1. Reassign affected projects
+    const affected = projects.filter((p) => (p.category || '').trim() === catToDelete);
+    if (affected.length > 0) {
+      for (const p of affected) {
+        await api.updateProject(p.id, {
+          ...p,
+          category: fallbackCategory
+        });
+      }
+      setProjects((prev) =>
+        prev.map((p) =>
+          (p.category || '').trim() === catToDelete ? { ...p, category: fallbackCategory } : p
+        )
+      );
+    }
+
+    // 2. Remove from custom categories
+    const updated = customCategories.filter((c) => c !== catToDelete);
+    setCustomCategories(updated);
+    try {
+      localStorage.setItem('vezta_project_custom_categories', JSON.stringify(updated));
+    } catch (_) {}
+
+    // 3. Reset filter if needed
+    if (filterCategory === catToDelete) {
+      setFilterCategory('ALL');
+    }
+
+    toast.success(`Kategori "${catToDelete}" berhasil dihapus.`);
   };
 
   const loadProjects = async () => {
@@ -368,14 +403,26 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Project</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsManageCatOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-neutral-100 text-[#171717] text-xs sm:text-sm font-medium border border-[rgba(23,23,23,0.08)] shadow-2xs transition-all duration-200 cursor-pointer"
+            title="Kelola Kategori (Tambah & Hapus)"
+          >
+            <Tag className="w-4 h-4 text-[#E66F52]" />
+            <span>Kelola Kategori</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Project</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter, Search & Category Controls */}
@@ -487,14 +534,26 @@ export default function ProjectsPage() {
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setIsAddingCategoryNav(true)}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/60 hover:bg-white text-[#E66F52] border border-dashed border-[#E66F52]/60 hover:border-[#E66F52] transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3 h-3" />
-              <span>+ Kategori</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsAddingCategoryNav(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/60 hover:bg-white text-[#E66F52] border border-dashed border-[#E66F52]/60 hover:border-[#E66F52] transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3 h-3" />
+                <span>+ Kategori</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsManageCatOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/80 hover:bg-white text-[#171717] border border-[rgba(23,23,23,0.08)] transition-all cursor-pointer whitespace-nowrap shadow-2xs"
+                title="Kelola semua kategori"
+              >
+                <Tag className="w-3 h-3 text-[#E66F52]" />
+                <span>Kelola</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1086,6 +1145,19 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+
+      {/* CATEGORY MANAGEMENT MODAL */}
+      <CategoryManageModal
+        isOpen={isManageCatOpen}
+        onClose={() => setIsManageCatOpen(false)}
+        title="Kelola Kategori Projects"
+        itemTypeLabel="proyek"
+        categories={categories}
+        items={projects}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+        defaultFallback="Other"
+      />
 
       {/* DELETE CONFIRMATION MODAL */}
       <ConfirmModal
