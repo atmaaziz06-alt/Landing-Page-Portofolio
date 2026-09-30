@@ -187,8 +187,8 @@ export default function Login() {
           {/* Quick Credential Hint for Local Setup */}
           <div className="mt-8 pt-6 border-t border-[rgba(23,23,23,0.06)] text-center">
             <p className="text-[11px] text-[#5F5A57]">
-              Akun admin: <span className="font-semibold text-[#171717]">Kepo@gmail.com</span> /{' '}
-              <span className="font-semibold text-[#171717]">Kepo</span>
+              Akun admin: <span className="font-semibold text-[#171717]">atmaaziz06@gmail.com</span> /{' '}
+              <span className="font-semibold text-[#171717]">Albassam06</span>
             </p>
           </div>
         </div>

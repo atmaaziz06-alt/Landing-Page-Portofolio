@@ -64,7 +64,7 @@ if (DatabaseSync) {
 function createMemoryDB() {
   const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
   const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
-  const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam';
+  const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
   const passwordHash = bcrypt.hashSync(defaultPassword, 10);
 
   const state = {
@@ -620,7 +620,7 @@ function seedInitialData() {
   if (userCount === 0) {
     const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
     const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
-    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam';
+    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
     const passwordHash = bcrypt.hashSync(defaultPassword, 10);
 
     const insertUser = nativeDb.prepare(`
