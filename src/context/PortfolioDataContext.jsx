@@ -37,9 +37,11 @@ export function PortfolioDataProvider({ children }) {
   const [events, setEvents] = useState(() => {
     try {
       const stored = localStorage.getItem('vezta_events_cache');
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item) => item && item.isVisible !== false);
+        }
       }
     } catch (_) {}
     return fallbackEvents;
@@ -47,9 +49,11 @@ export function PortfolioDataProvider({ children }) {
   const [certifications, setCertifications] = useState(() => {
     try {
       const stored = localStorage.getItem('vezta_certifications_cache');
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item) => item && item.isVisible !== false);
+        }
       }
     } catch (_) {}
     return fallbackCertifications;
@@ -158,19 +162,21 @@ export function PortfolioDataProvider({ children }) {
 
       // 8. Events & Kegiatan (only visible)
       const evRes = await api.getEvents(false).catch(() => null);
-      if (evRes?.success && Array.isArray(evRes.data) && evRes.data.length > 0) {
-        setEvents(evRes.data);
+      if (evRes?.success && Array.isArray(evRes.data)) {
+        const visibleEvents = evRes.data.filter((e) => e && e.isVisible !== false);
+        setEvents(visibleEvents);
         try {
-          localStorage.setItem('vezta_events_cache', JSON.stringify(evRes.data));
+          localStorage.setItem('vezta_events_cache', JSON.stringify(visibleEvents));
         } catch (_) {}
       }
 
       // 9. Certifications (only visible)
       const certRes = await api.getCertifications(false).catch(() => null);
-      if (certRes?.success && Array.isArray(certRes.data) && certRes.data.length > 0) {
-        setCertifications(certRes.data);
+      if (certRes?.success && Array.isArray(certRes.data)) {
+        const visibleCerts = certRes.data.filter((c) => c && c.isVisible !== false);
+        setCertifications(visibleCerts);
         try {
-          localStorage.setItem('vezta_certifications_cache', JSON.stringify(certRes.data));
+          localStorage.setItem('vezta_certifications_cache', JSON.stringify(visibleCerts));
         } catch (_) {}
       }
     } catch (err) {

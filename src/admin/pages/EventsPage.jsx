@@ -64,7 +64,10 @@ export default function EventsPage() {
 
   const syncCache = (items) => {
     try {
-      localStorage.setItem('vezta_events_cache', JSON.stringify(items));
+      localStorage.setItem('vezta_events_admin', JSON.stringify(items));
+      // Public landing page cache MUST only contain visible items!
+      const visibleOnly = items.filter((item) => item && item.isVisible !== false);
+      localStorage.setItem('vezta_events_cache', JSON.stringify(visibleOnly));
     } catch (_) {}
   };
 
@@ -105,24 +108,24 @@ export default function EventsPage() {
   const loadEvents = async () => {
     try {
       const res = await api.getEvents(true);
-      if (res.success && res.data && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setEvents(res.data);
         syncCache(res.data);
       } else {
-        const cached = localStorage.getItem('vezta_events_cache');
-        if (cached) {
+        const cached = localStorage.getItem('vezta_events_admin');
+        if (cached !== null) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setEvents(parsed);
           }
         }
       }
     } catch (err) {
-      const cached = localStorage.getItem('vezta_events_cache');
-      if (cached) {
+      const cached = localStorage.getItem('vezta_events_admin');
+      if (cached !== null) {
         try {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setEvents(parsed);
             return;
           }

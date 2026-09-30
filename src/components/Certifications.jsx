@@ -10,8 +10,13 @@ export default function Certifications() {
   const { certifications } = usePortfolioData();
   const [activeCert, setActiveCert] = useState(null);
 
+  // Filter strictly to visible certifications only
+  const visibleCertifications = (certifications || []).filter(
+    (item) => item && item.isVisible !== false
+  );
+
   // CRITICAL REQUIREMENT: Do NOT render section on landing page if empty!
-  if (!certifications || certifications.length === 0) {
+  if (!visibleCertifications || visibleCertifications.length === 0) {
     return null;
   }
 
@@ -35,7 +40,7 @@ export default function Certifications() {
 
         {/* Certifications Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-12">
-          {certifications.map((item, index) => (
+          {visibleCertifications.map((item, index) => (
             <Reveal
               key={item.id || index}
               variant="fade-up"

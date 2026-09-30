@@ -648,6 +648,14 @@ export function logActivity(action, details = '') {
 // Seed Initial Data if empty in native SQLite
 function seedInitialData() {
   if (!nativeDb) return;
+
+  const isFreshDb = (nativeDb.prepare('SELECT COUNT(*) as count FROM activity_logs').get()?.count || 0) === 0;
+  if (!isFreshDb) {
+    // Database has already been initialized in the past.
+    // Preserve all user deletions and changes — do not re-seed!
+    return;
+  }
+
   const userCount = nativeDb.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
   if (userCount === 0) {
     const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';

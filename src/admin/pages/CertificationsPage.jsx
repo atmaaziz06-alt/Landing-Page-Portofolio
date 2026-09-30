@@ -106,32 +106,34 @@ export default function CertificationsPage() {
 
   const syncCache = (items) => {
     try {
-      localStorage.setItem('vezta_certifications_cache', JSON.stringify(items));
+      localStorage.setItem('vezta_certifications_admin', JSON.stringify(items));
+      // Public landing page cache MUST only contain visible items!
+      const visibleOnly = items.filter((item) => item && item.isVisible !== false);
+      localStorage.setItem('vezta_certifications_cache', JSON.stringify(visibleOnly));
     } catch (_) {}
   };
 
   const loadCertifications = async () => {
     try {
       const res = await api.getCertifications(true);
-      if (res.success && res.data && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setCertifications(res.data);
         syncCache(res.data);
       } else {
-        // Fallback to local cache if available
-        const cached = localStorage.getItem('vezta_certifications_cache');
-        if (cached) {
+        const cached = localStorage.getItem('vezta_certifications_admin');
+        if (cached !== null) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setCertifications(parsed);
           }
         }
       }
     } catch (err) {
-      const cached = localStorage.getItem('vezta_certifications_cache');
-      if (cached) {
+      const cached = localStorage.getItem('vezta_certifications_admin');
+      if (cached !== null) {
         try {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setCertifications(parsed);
             return;
           }

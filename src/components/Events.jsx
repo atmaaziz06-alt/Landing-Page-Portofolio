@@ -10,8 +10,13 @@ export default function Events() {
   const { events } = usePortfolioData();
   const [activeEvent, setActiveEvent] = useState(null);
 
+  // Filter strictly to visible events only
+  const visibleEvents = (events || []).filter(
+    (item) => item && item.isVisible !== false
+  );
+
   // CRITICAL REQUIREMENT: Do NOT render section on landing page if empty!
-  if (!events || events.length === 0) {
+  if (!visibleEvents || visibleEvents.length === 0) {
     return null;
   }
 
@@ -35,7 +40,7 @@ export default function Events() {
 
         {/* Events Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-12">
-          {events.map((item, index) => (
+          {visibleEvents.map((item, index) => (
             <Reveal
               key={item.id || index}
               variant="fade-up"
