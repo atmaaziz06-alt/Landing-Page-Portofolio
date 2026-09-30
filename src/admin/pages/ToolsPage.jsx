@@ -260,15 +260,19 @@ export default function ToolsPage() {
     if (!file) return;
     setUploadingIcon(true);
     try {
-      const res = await api.uploadImage(file);
-      if (res.success && res.data?.url) {
-        setFormData((prev) => ({ ...prev, customIconUrl: res.data.url }));
+      const res = await api.uploadFile(file);
+      const uploadedUrl = res.url || res.data?.url || res.data;
+      if (res.success && uploadedUrl) {
+        setFormData((prev) => ({ ...prev, customIconUrl: uploadedUrl }));
         toast.success('Icon custom berhasil diunggah!');
+      } else {
+        toast.error(res.message || 'Gagal mengunggah icon.');
       }
     } catch (err) {
       toast.error('Gagal mengunggah icon: ' + err.message);
     } finally {
       setUploadingIcon(false);
+      if (e.target) e.target.value = '';
     }
   };
 

@@ -388,6 +388,10 @@ export const api = {
     return handleResponse(res);
   },
 
+  async uploadImage(file) {
+    return this.uploadFile(file);
+  },
+
   // Upload multiple files
   async uploadMultipleFiles(fileList) {
     const formData = new FormData();
