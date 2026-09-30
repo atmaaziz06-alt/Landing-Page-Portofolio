@@ -6,8 +6,10 @@ import './index.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
+import { PortfolioDataProvider } from './context/PortfolioDataContext.jsx';
 import ProtectedRoute from './admin/components/ProtectedRoute.jsx';
 import AdminLayout from './admin/components/AdminLayout.jsx';
+import AdminErrorBoundary from './admin/components/AdminErrorBoundary.jsx';
 
 import Login from './admin/pages/Login.jsx';
 import Dashboard from './admin/pages/Dashboard.jsx';
@@ -25,40 +27,44 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <Routes>
-            {/* Public Landing Page */}
-            <Route path="/" element={<App />} />
+        <PortfolioDataProvider>
+          <ToastProvider>
+            <AdminErrorBoundary>
+              <Routes>
+                {/* Public Landing Page */}
+                <Route path="/" element={<App />} />
 
-            {/* Admin Login */}
-            <Route path="/admin/login" element={<Login />} />
+                {/* Admin Login */}
+                <Route path="/admin/login" element={<Login />} />
 
-            {/* Protected Admin Dashboard Area */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="experience" element={<ExperiencePage />} />
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="tools" element={<ToolsPage />} />
-              <Route path="skills" element={<SkillsPage />} />
-              <Route path="events" element={<EventsPage />} />
-              <Route path="certifications" element={<CertificationsPage />} />
-              <Route path="contact" element={<ContactPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
+                {/* Protected Admin Dashboard Area */}
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="experience" element={<ExperiencePage />} />
+                  <Route path="projects" element={<ProjectsPage />} />
+                  <Route path="tools" element={<ToolsPage />} />
+                  <Route path="skills" element={<SkillsPage />} />
+                  <Route path="events" element={<EventsPage />} />
+                  <Route path="certifications" element={<CertificationsPage />} />
+                  <Route path="contact" element={<ContactPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ToastProvider>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </AdminErrorBoundary>
+          </ToastProvider>
+        </PortfolioDataProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>

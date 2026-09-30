@@ -12,12 +12,20 @@ import Testimonials from './components/Testimonials';
 import ContactCTA from './components/ContactCTA';
 import Footer from './components/Footer';
 import CustomCursor from './components/CustomCursor';
-import { PortfolioDataProvider } from './context/PortfolioDataContext';
+import { useAuth } from './context/AuthContext';
 
 export default function App() {
+  const { isAuthenticated, logout } = useAuth();
+
+  // Auto logout whenever leaving admin and visiting public page
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      logout();
+    }
+  }, [isAuthenticated, logout]);
+
   return (
-    <PortfolioDataProvider>
-      <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
       {/* Smooth Ambient Custom Cursor */}
       <CustomCursor />
 
@@ -60,6 +68,5 @@ export default function App() {
       {/* 9. Minimal Editorial Footer */}
       <Footer />
     </div>
-    </PortfolioDataProvider>
   );
 }

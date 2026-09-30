@@ -1,5 +1,5 @@
 // src/admin/components/AdminLayout.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -29,6 +29,16 @@ export default function AdminLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Auto-logout whenever leaving the Admin panel (navigating away or closing)
+  useEffect(() => {
+    return () => {
+      // If the URL is no longer within /admin, log the user out immediately
+      if (!window.location.pathname.startsWith('/admin')) {
+        logout();
+      }
+    };
+  }, [logout]);
+
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Profile', path: '/admin/profile', icon: User },
@@ -46,6 +56,12 @@ export default function AdminLayout() {
     logout();
     toast.success('Berhasil logout dari sistem admin.');
     navigate('/admin/login', { replace: true });
+  };
+
+  const handleLeaveToPublic = () => {
+    logout();
+    toast.info('Keluar dari panel admin & menuju website utama.');
+    navigate('/');
   };
 
   // Close mobile drawer on item click
@@ -131,19 +147,18 @@ export default function AdminLayout() {
 
         {/* User Card & Logout Bottom */}
         <div className="p-4 border-t border-[rgba(23,23,23,0.06)] bg-white/40 space-y-3">
-          {/* Quick link to public website */}
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between w-full px-3.5 py-2 rounded-xl text-xs font-medium text-[#171717] bg-white hover:bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] shadow-2xs transition-colors"
+          {/* Quick link to public website with auto-logout */}
+          <button
+            type="button"
+            onClick={handleLeaveToPublic}
+            className="flex items-center justify-between w-full px-3.5 py-2 rounded-xl text-xs font-medium text-[#171717] bg-white hover:bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] shadow-2xs transition-colors cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <ExternalLink className="w-3.5 h-3.5 text-[#E66F52]" />
-              <span>Lihat Website Public</span>
+              <span>Lihat Website (Keluar)</span>
             </span>
-            <span className="text-[10px] text-[#5F5A57]">Buka Tab Baru</span>
-          </a>
+            <span className="text-[10px] text-[#E66F52] font-semibold">Auto Logout</span>
+          </button>
 
           {/* User profile & Logout */}
           <div className="flex items-center justify-between pt-1">
@@ -197,15 +212,14 @@ export default function AdminLayout() {
               <span>Database Connected</span>
             </div>
 
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-[#171717] bg-white hover:bg-white/80 border border-[rgba(23,23,23,0.1)] shadow-2xs hover:shadow-xs transition-all"
+            <button
+              type="button"
+              onClick={handleLeaveToPublic}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-[#171717] bg-white hover:bg-white/80 border border-[rgba(23,23,23,0.1)] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
             >
-              <span>Public Site</span>
+              <span>Public Site (Keluar)</span>
               <ExternalLink className="w-3 h-3 text-[#5F5A57]" />
-            </a>
+            </button>
           </div>
         </header>
 

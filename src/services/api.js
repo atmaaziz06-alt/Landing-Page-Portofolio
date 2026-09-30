@@ -5,8 +5,19 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
   : '/api';
 
+function getAuthToken() {
+  return sessionStorage.getItem('vezta_admin_token') || localStorage.getItem('vezta_admin_token');
+}
+
+function clearAuthStorage() {
+  sessionStorage.removeItem('vezta_admin_token');
+  sessionStorage.removeItem('vezta_admin_user');
+  localStorage.removeItem('vezta_admin_token');
+  localStorage.removeItem('vezta_admin_user');
+}
+
 function getAuthHeaders() {
-  const token = localStorage.getItem('vezta_admin_token');
+  const token = getAuthToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -27,8 +38,7 @@ async function handleResponse(response) {
     if (response.status === 401 || response.status === 403) {
       // If unauthorized on an admin route, trigger session cleanup
       if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
-        localStorage.removeItem('vezta_admin_token');
-        localStorage.removeItem('vezta_admin_user');
+        clearAuthStorage();
         window.location.href = '/admin/login?session=expired';
       }
     }
@@ -366,7 +376,7 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = localStorage.getItem('vezta_admin_token');
+    const token = getAuthToken();
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -385,7 +395,7 @@ export const api = {
       formData.append('files', f);
     }
 
-    const token = localStorage.getItem('vezta_admin_token');
+    const token = getAuthToken();
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
