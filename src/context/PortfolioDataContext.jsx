@@ -10,6 +10,8 @@ import { profileData as fallbackProfile } from '../data/profile';
 import { projects as fallbackProjects } from '../data/projects';
 import { experienceData as fallbackExperience } from '../data/experience';
 import { servicesData as fallbackServices } from '../data/services';
+import { fallbackCertifications } from '../data/certifications';
+import { fallbackEvents } from '../data/events';
 
 const PortfolioDataContext = createContext(null);
 
@@ -32,8 +34,26 @@ export function PortfolioDataProvider({ children }) {
   const [experience, setExperience] = useState(fallbackExperience);
   const [skills, setSkills] = useState(fallbackServices);
   const [tools, setTools] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [certifications, setCertifications] = useState([]);
+  const [events, setEvents] = useState(() => {
+    try {
+      const stored = localStorage.getItem('vezta_events_cache');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return fallbackEvents;
+  });
+  const [certifications, setCertifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem('vezta_certifications_cache');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return fallbackCertifications;
+  });
   const [contact, setContact] = useState({
     ctaTitle: "Have a project in mind? Let's create something iconic.",
     ctaDescription: "Currently accepting selected freelance and contract design projects. Available for creative direction, visual brand identity, and modern digital web experiences.",
@@ -138,14 +158,20 @@ export function PortfolioDataProvider({ children }) {
 
       // 8. Events & Kegiatan (only visible)
       const evRes = await api.getEvents(false).catch(() => null);
-      if (evRes?.success && Array.isArray(evRes.data)) {
+      if (evRes?.success && Array.isArray(evRes.data) && evRes.data.length > 0) {
         setEvents(evRes.data);
+        try {
+          localStorage.setItem('vezta_events_cache', JSON.stringify(evRes.data));
+        } catch (_) {}
       }
 
       // 9. Certifications (only visible)
       const certRes = await api.getCertifications(false).catch(() => null);
-      if (certRes?.success && Array.isArray(certRes.data)) {
+      if (certRes?.success && Array.isArray(certRes.data) && certRes.data.length > 0) {
         setCertifications(certRes.data);
+        try {
+          localStorage.setItem('vezta_certifications_cache', JSON.stringify(certRes.data));
+        } catch (_) {}
       }
     } catch (err) {
       console.warn('Could not sync public data from API, using fallback:', err);
@@ -189,8 +215,8 @@ export function usePortfolioData() {
       experience: fallbackExperience,
       skills: fallbackServices,
       tools: [],
-      events: [],
-      certifications: [],
+      events: fallbackEvents,
+      certifications: fallbackCertifications,
       contact: {},
       socials: [],
       settings: {},

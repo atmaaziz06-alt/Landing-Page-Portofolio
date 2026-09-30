@@ -316,3 +316,75 @@ export const initialSettings = {
   seoKeywords: "graphic design, portfolio, UI/UX, AI video, web designer, semarang, indonesia",
   ogImage: "/assets/images/user-portrait.png"
 };
+
+export const initialCertifications = [
+  {
+    title: "Professional Certificate in UI/UX & Visual Communication",
+    issuer: "Academy of Digital Arts",
+    issueDate: "November 2025",
+    expiryDate: "Tidak Kedaluwarsa",
+    credentialId: "ADA-UXD-2025-98214",
+    credentialUrl: "https://coursera.org",
+    imageUrl: "/assets/images/certificate-ux-design.jpg",
+    category: "UI/UX Design",
+    description: "Sertifikasi kompetensi profesional komprehensif yang menguji keahlian riset pengguna (UX research), arsitektur informasi, wireframing, perancangan antarmuka visual (UI design), prototipe interaktif, dan standar design system.",
+    displayOrder: 1,
+    isVisible: true
+  },
+  {
+    title: "Certified Graphic Designer & Visual Identity Specialist",
+    issuer: "Badan Nasional Sertifikasi Profesi (BNSP)",
+    issueDate: "Agustus 2025",
+    expiryDate: "Agustus 2028",
+    credentialId: "BNSP-DSN-84729-ID",
+    credentialUrl: "https://bnsp.go.id",
+    imageUrl: "/assets/images/certificate-ux-design.jpg",
+    category: "Desain Grafis",
+    description: "Pengakuan standar kompetensi kerja nasional mencakup prinsip dasar komunikasi visual, tipografi editorial, teori warna, perancangan identitas visual brand terpadu, dan final art artwork siap produksi.",
+    displayOrder: 2,
+    isVisible: true
+  },
+  {
+    title: "Front-End Web Development Specialization",
+    issuer: "Dicoding Indonesia",
+    issueDate: "Januari 2026",
+    expiryDate: "Tidak Kedaluwarsa",
+    credentialId: "DICODING-FE-77218-XX",
+    credentialUrl: "https://dicoding.com",
+    imageUrl: "/assets/images/certificate-ux-design.jpg",
+    category: "Web Development",
+    description: "Standar kurikulum industri untuk penguasaan fundamental web modern: Semantic HTML5, CSS Grid & Flexbox, JavaScript ES6+, integrasi API, serta optimasi performa dan aksesibilitas website.",
+    displayOrder: 3,
+    isVisible: true
+  }
+];
+
+export const initialEvents = [
+  {
+    title: "Workshop Brand Identity & Typography Eksploratif",
+    organizer: "Komunitas Desain Grafis Indonesia",
+    date: "14 Januari 2026",
+    period: "2026",
+    location: "Semarang, Jawa Tengah",
+    role: "Peserta Aktif",
+    description: "Pelatihan intensif pengembangan identitas visual brand, eksplorasi gaya tipografi kontemporer, dan strategi pengemasan portofolio visual untuk klien global.",
+    imageUrl: "/assets/images/event-workshop.jpg",
+    linkUrl: "https://instagram.com/atma.zyies/",
+    displayOrder: 1,
+    isVisible: true
+  },
+  {
+    title: "Creative Innovation & Visual Design Summit",
+    organizer: "Creative Tech Summit 2025",
+    date: "28 November 2025",
+    period: "2025",
+    location: "Semarang / Hybrid",
+    role: "Peserta & Kolaborator",
+    description: "Forum seminar dan eksibisi teknologi kreatif nasional yang membahas tren Generative AI dalam produksi konten visual, motion graphics komersial, dan arah industri desain digital masa depan.",
+    imageUrl: "/assets/images/event-seminar.jpg",
+    linkUrl: "https://instagram.com/atma.zyies/",
+    displayOrder: 2,
+    isVisible: true
+  }
+];
+

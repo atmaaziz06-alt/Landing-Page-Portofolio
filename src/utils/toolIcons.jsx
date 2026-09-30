@@ -258,10 +258,91 @@ export const iconMap = {
   googledrive: <DriveIcon />
 };
 
-export function ToolImage({ src, alt, fallback }) {
+export function autoOptimizeImage(imageSrc, fillRatio = 0.88) {
+  return new Promise((resolve) => {
+    if (!imageSrc) return resolve('');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const sw = img.naturalWidth || img.width;
+      const sh = img.naturalHeight || img.height;
+      if (sw === 0 || sh === 0) return resolve(imageSrc);
+
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = sw;
+      srcCanvas.height = sh;
+      const sctx = srcCanvas.getContext('2d');
+      sctx.drawImage(img, 0, 0);
+
+      let imgData;
+      try {
+        imgData = sctx.getImageData(0, 0, sw, sh);
+      } catch (_) {
+        return resolve(imageSrc);
+      }
+
+      const data = imgData.data;
+      let minX = sw;
+      let minY = sh;
+      let maxX = 0;
+      let maxY = 0;
+      let hasContent = false;
+
+      for (let y = 0; y < sh; y++) {
+        for (let x = 0; x < sw; x++) {
+          const idx = (y * sw + x) * 4;
+          const a = data[idx + 3];
+          if (a > 15) {
+            hasContent = true;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (!hasContent || maxX <= minX || maxY <= minY) {
+        minX = 0;
+        minY = 0;
+        maxX = sw - 1;
+        maxY = sh - 1;
+      }
+
+      const contentW = maxX - minX + 1;
+      const contentH = maxY - minY + 1;
+
+      const targetSize = 160;
+      const destCanvas = document.createElement('canvas');
+      destCanvas.width = targetSize;
+      destCanvas.height = targetSize;
+      const dctx = destCanvas.getContext('2d');
+      dctx.imageSmoothingEnabled = true;
+      dctx.imageSmoothingQuality = 'high';
+
+      const maxAllowed = targetSize * fillRatio;
+      const scale = Math.min(maxAllowed / contentW, maxAllowed / contentH);
+      const drawW = Math.round(contentW * scale);
+      const drawH = Math.round(contentH * scale);
+      const destX = Math.round((targetSize - drawW) / 2);
+      const destY = Math.round((targetSize - drawH) / 2);
+
+      dctx.drawImage(
+        srcCanvas,
+        minX, minY, contentW, contentH,
+        destX, destY, drawW, drawH
+      );
+
+      resolve(destCanvas.toDataURL('image/png', 0.95));
+    };
+    img.onerror = () => resolve(imageSrc);
+    img.src = imageSrc;
+  });
+}
+
+export function ToolImage({ src, alt, fallback, className = "w-full h-full object-contain" }) {
   const [hasError, setHasError] = React.useState(false);
 
-  // If the src changes, reset error state
   React.useEffect(() => {
     setHasError(false);
   }, [src]);
@@ -272,41 +353,60 @@ export function ToolImage({ src, alt, fallback }) {
     <img
       src={src}
       alt={alt || 'Tool'}
-      className="w-5 h-5 object-contain"
+      className={className}
       onError={() => setHasError(true)}
     />
   );
 }
 
-export function resolveToolIcon(tool) {
-  if (!tool) return <Wrench className="w-5 h-5 text-[#5F5A57]" />;
-  if (tool.icon) return tool.icon;
+export function resolveToolIcon(tool, sizeClass = "w-7 h-7 sm:w-8 sm:h-8") {
+  if (!tool) return <Wrench className={`${sizeClass} text-[#5F5A57]`} />;
+  if (tool.icon) return <div className={`${sizeClass} flex items-center justify-center`}>{tool.icon}</div>;
 
   const getFallback = () => {
     const key = (tool.iconKey || tool.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (iconMap[key]) return iconMap[key];
+    const found = iconMap[key];
+    if (found) {
+      return (
+        <div className={`${sizeClass} flex items-center justify-center`}>
+          {React.isValidElement(found)
+            ? React.cloneElement(found, { className: 'w-full h-full flex-shrink-0' })
+            : found}
+        </div>
+      );
+    }
 
+    let IconComp;
     switch (tool.category) {
       case 'Desain':
-        return <Palette className="w-5 h-5 text-[#E66F52]" />;
+        IconComp = <Palette className="w-full h-full text-[#E66F52]" />;
+        break;
       case 'Prompting AI':
-        return <Bot className="w-5 h-5 text-[#7B61FF]" />;
+        IconComp = <Bot className="w-full h-full text-[#7B61FF]" />;
+        break;
       case 'Front End Development':
-        return <Code2 className="w-5 h-5 text-[#0284C7]" />;
+        IconComp = <Code2 className="w-full h-full text-[#0284C7]" />;
+        break;
       case 'Office':
-        return <Briefcase className="w-5 h-5 text-[#059669]" />;
+        IconComp = <Briefcase className="w-full h-full text-[#059669]" />;
+        break;
       default:
-        return <Sparkles className="w-5 h-5 text-[#E66F52]" />;
+        IconComp = <Sparkles className="w-full h-full text-[#E66F52]" />;
+        break;
     }
+    return <div className={`${sizeClass} flex items-center justify-center`}>{IconComp}</div>;
   };
 
   if (tool.customIconUrl) {
     return (
-      <ToolImage
-        src={tool.customIconUrl}
-        alt={tool.name}
-        fallback={getFallback()}
-      />
+      <div className={`${sizeClass} flex items-center justify-center`}>
+        <ToolImage
+          src={tool.customIconUrl}
+          alt={tool.name}
+          className="w-full h-full object-contain"
+          fallback={getFallback()}
+        />
+      </div>
     );
   }
 

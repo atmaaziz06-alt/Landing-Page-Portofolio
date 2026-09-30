@@ -7,7 +7,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import CategoryManageModal from '../components/CategoryManageModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
-import { resolveToolIcon } from '../../utils/toolIcons';
+import { resolveToolIcon, autoOptimizeImage } from '../../utils/toolIcons';
 import {
   Wrench,
   Plus,
@@ -26,9 +26,7 @@ import {
   Palette,
   Check,
   Tag,
-  ChevronDown,
-  SlidersHorizontal,
-  Image as ImageIcon
+  ChevronDown
 } from 'lucide-react';
 
 export default function ToolsPage() {
@@ -255,51 +253,28 @@ export default function ToolsPage() {
     }
   };
 
-  const compressIcon = (file) => {
-    return new Promise((resolve) => {
-      if (file.type === 'image/svg+xml') {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-        return;
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const handleOptimizeScale = async (fillRatio = 0.88) => {
+    if (!formData.customIconUrl) return;
+    setIsOptimizing(true);
+    try {
+      const optimized = await autoOptimizeImage(formData.customIconUrl, fillRatio);
+      if (optimized) {
+        setFormData((prev) => ({ ...prev, customIconUrl: optimized }));
+        toast.success(
+          fillRatio >= 0.95
+            ? 'Ukuran logo diatur penuh & maksimal!'
+            : fillRatio <= 0.8
+            ? 'Ukuran logo diatur standar!'
+            : 'Ukuran logo berhasil dioptimalkan (pas & jelas)!'
+        );
       }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxDim = 128;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            }
-          } else {
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const dataUrl = canvas.toDataURL('image/png', 0.92);
-          resolve(dataUrl);
-        };
-        img.onerror = () => resolve(e.target.result);
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(file);
-    });
+    } catch (err) {
+      toast.error('Gagal mengoptimalkan icon: ' + err.message);
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   const handleIconUpload = async (e) => {
@@ -313,14 +288,20 @@ export default function ToolsPage() {
 
     setUploadingIcon(true);
     try {
-      // Generate optimized Data URL for instant, reliable & permanent preview
-      const dataUrl = await compressIcon(file);
-      if (dataUrl) {
-        setFormData((prev) => ({ ...prev, customIconUrl: dataUrl }));
-        toast.success('Icon custom berhasil dipasang!');
-      } else {
-        toast.error('Gagal memproses file icon.');
-      }
+      // 1. Convert to Data URL
+      const rawDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // 2. Automatically trim excessive transparent borders and scale to ideal 88%
+      const optimized = await autoOptimizeImage(rawDataUrl, 0.88);
+      const finalUrl = optimized || rawDataUrl;
+
+      setFormData((prev) => ({ ...prev, customIconUrl: finalUrl }));
+      toast.success('Icon custom berhasil dipasang & dioptimalkan ukurannya!');
 
       // Also upload to server in background if available
       try {
@@ -582,8 +563,8 @@ export default function ToolsPage() {
               <div>
                 {/* Header: Tool Icon & Reorder Controls */}
                 <div className="flex items-center justify-between gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FBEFE9]/70 border border-[rgba(23,23,23,0.06)] flex items-center justify-center p-2.5 shadow-2xs group-hover:scale-105 transition-transform duration-200">
-                    {resolveToolIcon(item)}
+                  <div className="w-12 h-12 rounded-2xl bg-[#FBEFE9]/70 border border-[rgba(23,23,23,0.06)] flex items-center justify-center p-2 shadow-2xs group-hover:scale-105 transition-transform duration-200">
+                    {resolveToolIcon(item, "w-8 h-8")}
                   </div>
 
                   {/* Sleek Order Reorder Pill */}
@@ -797,20 +778,29 @@ export default function ToolsPage() {
                 />
               </div>
 
-              {/* Custom Icon Upload (Optional) */}
+              {/* Custom Icon Upload & Optimizer */}
               <div>
-                <label className="block text-xs font-semibold text-[#171717] mb-1.5">
-                  Icon Kustom (Opsional)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[#171717]">
+                    Icon Kustom (Opsional)
+                  </label>
+                  {formData.customIconUrl && (
+                    <span className="text-[11px] text-[#5F5A57]">
+                      Preview & Ukuran
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] flex items-center justify-center p-2 shadow-2xs flex-shrink-0">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-[rgba(23,23,23,0.12)] flex items-center justify-center p-2 shadow-2xs flex-shrink-0">
                     {resolveToolIcon({
                       name: formData.name,
                       customIconUrl: formData.customIconUrl,
                       category: formData.category
-                    })}
+                    }, "w-9 h-9")}
                   </div>
-                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white border border-dashed border-[rgba(23,23,23,0.2)] hover:border-[#E66F52] text-xs font-medium text-[#5F5A57] hover:text-[#171717] cursor-pointer transition-colors shadow-2xs">
+
+                  <label className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-dashed border-[rgba(23,23,23,0.2)] hover:border-[#E66F52] text-xs font-medium text-[#5F5A57] hover:text-[#171717] cursor-pointer transition-colors shadow-2xs">
                     {uploadingIcon ? (
                       <Loader2 className="w-4 h-4 animate-spin text-[#E66F52]" />
                     ) : (
@@ -825,17 +815,64 @@ export default function ToolsPage() {
                       className="hidden"
                     />
                   </label>
+
                   {formData.customIconUrl && (
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, customIconUrl: '' })}
-                      className="p-2 rounded-xl text-stone-400 hover:text-red-500 hover:bg-white transition-colors"
+                      className="p-2.5 rounded-xl text-stone-400 hover:text-red-500 hover:bg-white transition-colors border border-[rgba(23,23,23,0.08)] shadow-2xs"
                       title="Hapus icon kustom dan gunakan default"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
+
+                {/* ICON SIZE & AUTO-FIT TOOLBAR */}
+                {formData.customIconUrl && (
+                  <div className="mt-2.5 p-3 rounded-2xl bg-white border border-[rgba(23,23,23,0.08)] shadow-2xs space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-[#171717] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-[#E66F52]" />
+                        <span>Optimasi Tampilan Logo:</span>
+                      </span>
+                      <span className="text-[#5F5A57]">Potong ruang kosong & sesuaikan ukuran</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOptimizeScale(0.88)}
+                        disabled={isOptimizing}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#E66F52] text-white hover:bg-[#D65F42] shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                        title="Otomatis potong spasi kosong dan atur ukuran proporsional ideal"
+                      >
+                        {isOptimizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        <span>Auto-Fit (Pas & Jelas)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOptimizeScale(0.98)}
+                        disabled={isOptimizing}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#FBEFE9] hover:bg-[#F5E2D8] text-[#171717] border border-[rgba(23,23,23,0.08)] transition-colors cursor-pointer disabled:opacity-50"
+                        title="Maksimalkan ukuran logo hingga memenuhi kotak (cocok untuk logo lingkaran/badge seperti Canva)"
+                      >
+                        Penuh (Besar)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOptimizeScale(0.76)}
+                        disabled={isOptimizing}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-neutral-100 text-[#5F5A57] border border-[rgba(23,23,23,0.1)] transition-colors cursor-pointer disabled:opacity-50"
+                        title="Ukuran standar dengan ruang margin lebih lega"
+                      >
+                        Standar (Kecil)
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -13,7 +13,9 @@ import {
   initialSkills,
   initialSocials,
   initialContact,
-  initialSettings
+  initialSettings,
+  initialCertifications,
+  initialEvents
 } from './seedData.js';
 
 dotenv.config();
@@ -201,8 +203,38 @@ function createMemoryDB() {
         updated_at: new Date().toISOString()
       }
     ],
-    events: [],
-    certifications: [],
+    events: initialEvents.map((e, idx) => ({
+      id: idx + 1,
+      title: e.title,
+      organizer: e.organizer || '',
+      date: e.date || '',
+      period: e.period || '',
+      location: e.location || '',
+      role: e.role || '',
+      description: e.description || '',
+      image_url: e.imageUrl || '',
+      link_url: e.linkUrl || '',
+      display_order: e.displayOrder || idx + 1,
+      is_visible: e.isVisible ? 1 : 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })),
+    certifications: initialCertifications.map((c, idx) => ({
+      id: idx + 1,
+      title: c.title,
+      issuer: c.issuer,
+      issue_date: c.issueDate || '',
+      expiry_date: c.expiryDate || '',
+      credential_id: c.credentialId || '',
+      credential_url: c.credentialUrl || '',
+      image_url: c.imageUrl || '',
+      category: c.category || 'General',
+      description: c.description || '',
+      display_order: c.displayOrder || idx + 1,
+      is_visible: c.isVisible ? 1 : 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })),
     activity_logs: []
   };
 
@@ -816,6 +848,61 @@ function seedInitialData() {
       initialSettings.seoKeywords,
       initialSettings.ogImage
     );
+  }
+
+  // 10. Certifications
+  const certCount = nativeDb.prepare('SELECT COUNT(*) as count FROM certifications').get()?.count || 0;
+  if (certCount === 0) {
+    const insertCert = nativeDb.prepare(`
+      INSERT INTO certifications (
+        title, issuer, issue_date, expiry_date, credential_id,
+        credential_url, image_url, category, description,
+        display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const cert of initialCertifications) {
+      insertCert.run(
+        cert.title,
+        cert.issuer,
+        cert.issueDate || '',
+        cert.expiryDate || '',
+        cert.credentialId || '',
+        cert.credentialUrl || '',
+        cert.imageUrl || '',
+        cert.category || 'General',
+        cert.description || '',
+        cert.displayOrder,
+        cert.isVisible ? 1 : 0
+      );
+    }
+  }
+
+  // 11. Events
+  const eventsCount = nativeDb.prepare('SELECT COUNT(*) as count FROM events').get()?.count || 0;
+  if (eventsCount === 0) {
+    const insertEv = nativeDb.prepare(`
+      INSERT INTO events (
+        title, organizer, date, period, location, role,
+        description, image_url, link_url, display_order, is_visible
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const ev of initialEvents) {
+      insertEv.run(
+        ev.title,
+        ev.organizer || '',
+        ev.date || '',
+        ev.period || '',
+        ev.location || '',
+        ev.role || '',
+        ev.description || '',
+        ev.imageUrl || '',
+        ev.linkUrl || '',
+        ev.displayOrder,
+        ev.isVisible ? 1 : 0
+      );
+    }
   }
 
   // Initial log
