@@ -4,6 +4,8 @@ import Hero from './components/Hero';
 import TrustBar from './components/TrustBar';
 import Projects from './components/Projects';
 import Experience from './components/Experience';
+import Certifications from './components/Certifications';
+import Events from './components/Events';
 import Services from './components/Services';
 import About from './components/About';
 import Testimonials from './components/Testimonials';
@@ -36,7 +38,13 @@ export default function App() {
         {/* 4. Experience Timeline */}
         <Experience />
 
-        {/* 5. Services & Capabilities */}
+        {/* 5. Certifications (Only renders if has items) */}
+        <Certifications />
+
+        {/* 6. Events & Activities (Only renders if has items) */}
+        <Events />
+
+        {/* 7. Services & Capabilities */}
         <Services />
 
         {/* 6. About Me & Stats */}

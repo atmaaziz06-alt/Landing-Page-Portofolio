@@ -88,7 +88,7 @@ export default function Login() {
               Admin Portal
             </h1>
             <p className="text-xs sm:text-sm text-[#5F5A57] mt-1.5">
-              Masuk untuk mengelola portofolio & konten CMS
+              Masuk untuk mengelola portofolio
             </p>
           </div>
 

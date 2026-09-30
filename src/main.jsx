@@ -18,6 +18,8 @@ import ToolsPage from './admin/pages/ToolsPage.jsx';
 import SkillsPage from './admin/pages/SkillsPage.jsx';
 import ContactPage from './admin/pages/ContactPage.jsx';
 import SettingsPage from './admin/pages/SettingsPage.jsx';
+import EventsPage from './admin/pages/EventsPage.jsx';
+import CertificationsPage from './admin/pages/CertificationsPage.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -47,6 +49,8 @@ createRoot(document.getElementById('root')).render(
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="tools" element={<ToolsPage />} />
               <Route path="skills" element={<SkillsPage />} />
+              <Route path="events" element={<EventsPage />} />
+              <Route path="certifications" element={<CertificationsPage />} />
               <Route path="contact" element={<ContactPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

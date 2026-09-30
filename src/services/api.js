@@ -397,6 +397,118 @@ export const api = {
     return handleResponse(res);
   },
 
+  // Events & Kegiatan
+  async getEvents(showAll = false) {
+    const url = showAll ? `${API_BASE}/events?all=true` : `${API_BASE}/events`;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(res);
+  },
+
+  async getEvent(id) {
+    const res = await fetch(`${API_BASE}/events/${id}`);
+    return handleResponse(res);
+  },
+
+  async createEvent(data) {
+    const res = await fetch(`${API_BASE}/events`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  async updateEvent(id, data) {
+    const res = await fetch(`${API_BASE}/events/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  async toggleEventVisibility(id, isVisible) {
+    const res = await fetch(`${API_BASE}/events/${id}/visibility`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ isVisible })
+    });
+    return handleResponse(res);
+  },
+
+  async reorderEvents(items) {
+    const res = await fetch(`${API_BASE}/events/reorder/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ items })
+    });
+    return handleResponse(res);
+  },
+
+  async deleteEvent(id) {
+    const res = await fetch(`${API_BASE}/events/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  // Certifications / Sertifikasi
+  async getCertifications(showAll = false) {
+    const url = showAll ? `${API_BASE}/certifications?all=true` : `${API_BASE}/certifications`;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    return handleResponse(res);
+  },
+
+  async getCertification(id) {
+    const res = await fetch(`${API_BASE}/certifications/${id}`);
+    return handleResponse(res);
+  },
+
+  async createCertification(data) {
+    const res = await fetch(`${API_BASE}/certifications`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  async updateCertification(id, data) {
+    const res = await fetch(`${API_BASE}/certifications/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  async toggleCertificationVisibility(id, isVisible) {
+    const res = await fetch(`${API_BASE}/certifications/${id}/visibility`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ isVisible })
+    });
+    return handleResponse(res);
+  },
+
+  async reorderCertifications(items) {
+    const res = await fetch(`${API_BASE}/certifications/reorder/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ items })
+    });
+    return handleResponse(res);
+  },
+
+  async deleteCertification(id) {
+    const res = await fetch(`${API_BASE}/certifications/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
   // Stats & Dashboard
   async getStats() {
     const res = await fetch(`${API_BASE}/stats`, {

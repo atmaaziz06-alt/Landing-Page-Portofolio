@@ -19,6 +19,8 @@ export function PortfolioDataProvider({ children }) {
   const [experience, setExperience] = useState(fallbackExperience);
   const [skills, setSkills] = useState(fallbackServices);
   const [tools, setTools] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [certifications, setCertifications] = useState([]);
   const [contact, setContact] = useState({
     ctaTitle: "Have a project in mind? Let's create something iconic.",
     ctaDescription: "Currently accepting selected freelance and contract design projects. Available for creative direction, visual brand identity, and modern digital web experiences.",
@@ -108,6 +110,18 @@ export function PortfolioDataProvider({ children }) {
           document.title = setRes.data.siteTitle;
         }
       }
+
+      // 8. Events & Kegiatan (only visible)
+      const evRes = await api.getEvents(false).catch(() => null);
+      if (evRes?.success && Array.isArray(evRes.data)) {
+        setEvents(evRes.data);
+      }
+
+      // 9. Certifications (only visible)
+      const certRes = await api.getCertifications(false).catch(() => null);
+      if (certRes?.success && Array.isArray(certRes.data)) {
+        setCertifications(certRes.data);
+      }
     } catch (err) {
       console.warn('Could not sync public data from API, using fallback:', err);
     } finally {
@@ -125,6 +139,8 @@ export function PortfolioDataProvider({ children }) {
     experience,
     skills,
     tools,
+    events,
+    certifications,
     contact,
     socials,
     settings,

@@ -17,7 +17,9 @@ import {
   Menu,
   X,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Calendar,
+  Award
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -34,6 +36,8 @@ export default function AdminLayout() {
     { label: 'Projects', path: '/admin/projects', icon: FolderKanban },
     { label: 'Tools', path: '/admin/tools', icon: Wrench },
     { label: 'Skills', path: '/admin/skills', icon: Layers },
+    { label: 'Event & Kegiatan', path: '/admin/events', icon: Calendar },
+    { label: 'Sertifikasi', path: '/admin/certifications', icon: Award },
     { label: 'Contact / CTA', path: '/admin/contact', icon: Mail },
     { label: 'Site Settings', path: '/admin/settings', icon: Settings },
   ];

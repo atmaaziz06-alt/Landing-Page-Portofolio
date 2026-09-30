@@ -17,10 +17,14 @@ export default function Projects() {
   const [isPaused, setIsPaused] = useState(false);
   const scrollContainerRef = useRef(null);
 
-  // Dynamic categories with default fallback
+  // Dynamic categories with all categories present in projects
   const categories = useMemo(() => {
-    const set = new Set(['All', 'Desain Grafis', 'Ai Video Content', 'UI/UX']);
-    projects.forEach(p => { if (p.category) set.add(p.category); });
+    const set = new Set(['All']);
+    projects.forEach((p) => {
+      if (p.category && p.category.trim()) {
+        set.add(p.category.trim());
+      }
+    });
     return Array.from(set);
   }, [projects]);
 

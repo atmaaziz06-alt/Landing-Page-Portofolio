@@ -17,6 +17,8 @@ import contactRoutes from './routes/contact.js';
 import settingsRoutes from './routes/settings.js';
 import uploadRoutes from './routes/upload.js';
 import statsRoutes from './routes/stats.js';
+import eventsRoutes from './routes/events.js';
+import certificationsRoutes from './routes/certifications.js';
 
 dotenv.config();
 
@@ -60,6 +62,8 @@ const apiRoutes = [
   ['/api/settings', '/settings', settingsRoutes],
   ['/api/upload', '/upload', uploadRoutes],
   ['/api/stats', '/stats', statsRoutes],
+  ['/api/events', '/events', eventsRoutes],
+  ['/api/certifications', '/certifications', certificationsRoutes],
 ];
 
 for (const [apiPath, altPath, router] of apiRoutes) {

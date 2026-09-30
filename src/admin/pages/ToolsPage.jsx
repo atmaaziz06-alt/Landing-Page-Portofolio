@@ -21,7 +21,8 @@ import {
   Bot,
   Code2,
   Briefcase,
-  Palette
+  Palette,
+  Check
 } from 'lucide-react';
 
 export default function ToolsPage() {
@@ -42,7 +43,65 @@ export default function ToolsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const categories = ['Desain', 'Prompting AI', 'Front End Development', 'Office'];
+  const defaultToolCategories = ['Desain', 'Prompting AI', 'Front End Development', 'Office'];
+  const [customToolCategories, setCustomToolCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vezta_tool_custom_categories');
+      return saved ? JSON.parse(saved) : defaultToolCategories;
+    } catch (_) {
+      return defaultToolCategories;
+    }
+  });
+
+  const categories = useMemo(() => {
+    const set = new Set(customToolCategories);
+    tools.forEach((t) => {
+      if (t.category && t.category.trim()) {
+        set.add(t.category.trim());
+      }
+    });
+    return Array.from(set);
+  }, [customToolCategories, tools]);
+
+  const [isAddingCategoryNav, setIsAddingCategoryNav] = useState(false);
+  const [newCategoryNavName, setNewCategoryNavName] = useState('');
+  const [isAddingCategoryForm, setIsAddingCategoryForm] = useState(false);
+  const [newCategoryFormName, setNewCategoryFormName] = useState('');
+
+  const handleAddCategory = (name) => {
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (!customToolCategories.includes(trimmed)) {
+      const updated = [...customToolCategories, trimmed];
+      setCustomToolCategories(updated);
+      try {
+        localStorage.setItem('vezta_tool_custom_categories', JSON.stringify(updated));
+      } catch (_) {}
+      toast.success(`Kategori tool "${trimmed}" berhasil ditambahkan!`);
+    }
+  };
+
+  const handleMoveCategory = async (tool, newCategory) => {
+    if (!newCategory || newCategory === tool.category) return;
+    try {
+      const payload = {
+        name: tool.name,
+        role: tool.role,
+        category: newCategory,
+        iconKey: tool.iconKey,
+        customIconUrl: tool.customIconUrl,
+        displayOrder: tool.displayOrder,
+        isVisible: tool.isVisible
+      };
+      await api.updateTool(tool.id, payload);
+      setTools((prev) =>
+        prev.map((t) => (t.id === tool.id ? { ...t, category: newCategory } : t))
+      );
+      toast.success(`"${tool.name}" dipindahkan ke kategori "${newCategory}"!`);
+    } catch (err) {
+      toast.error('Gagal memindahkan kategori: ' + err.message);
+    }
+  };
 
   // Form data
   const [formData, setFormData] = useState({
@@ -283,7 +342,7 @@ export default function ToolsPage() {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                     selectedCategory === cat
-                      ? 'bg-[#E66F52] text-white'
+                      ? 'bg-[#E66F52] text-white shadow-2xs'
                       : 'bg-white/80 text-[#5F5A57] hover:bg-white hover:text-[#171717]'
                   }`}
                 >
@@ -291,6 +350,60 @@ export default function ToolsPage() {
                 </button>
               );
             })}
+
+            {/* Quick Add Custom Category */}
+            {isAddingCategoryNav ? (
+              <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-xl border border-[#E66F52] shadow-2xs">
+                <input
+                  type="text"
+                  value={newCategoryNavName}
+                  onChange={(e) => setNewCategoryNavName(e.target.value)}
+                  placeholder="Kategori baru..."
+                  className="text-xs px-2 py-1 outline-none w-28 text-[#171717]"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCategory(newCategoryNavName);
+                      if (newCategoryNavName.trim()) setSelectedCategory(newCategoryNavName.trim());
+                      setNewCategoryNavName('');
+                      setIsAddingCategoryNav(false);
+                    } else if (e.key === 'Escape') {
+                      setIsAddingCategoryNav(false);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAddCategory(newCategoryNavName);
+                    if (newCategoryNavName.trim()) setSelectedCategory(newCategoryNavName.trim());
+                    setNewCategoryNavName('');
+                    setIsAddingCategoryNav(false);
+                  }}
+                  className="p-1 rounded-full bg-[#E66F52] text-white hover:bg-[#D65F42]"
+                  title="Simpan Kategori"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCategoryNav(false)}
+                  className="p-1 rounded-full text-[#5F5A57] hover:bg-neutral-100"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsAddingCategoryNav(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/60 hover:bg-white text-[#E66F52] border border-dashed border-[#E66F52]/60 hover:border-[#E66F52] transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3 h-3" />
+                <span>+ Kategori</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -352,9 +465,23 @@ export default function ToolsPage() {
                     </h3>
                   </div>
                   <p className="text-xs text-[#5F5A57] line-clamp-1">{item.role}</p>
-                  <span className="inline-block text-[10px] font-medium text-[#5F5A57]/80 bg-white/70 px-2 py-0.5 rounded-md border border-[rgba(23,23,23,0.04)] mt-1">
-                    {item.category}
-                  </span>
+                  
+                  {/* Category Badge with Quick Transfer Selector */}
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="text-[10px] text-[#5F5A57] font-medium">Kategori:</span>
+                    <select
+                      value={item.category}
+                      onChange={(e) => handleMoveCategory(item, e.target.value)}
+                      title="Pindahkan ke kategori lain"
+                      className="text-[10px] font-semibold text-[#171717] bg-white border border-[rgba(23,23,23,0.12)] hover:border-[#E66F52] rounded-md px-1.5 py-0.5 cursor-pointer outline-none transition-colors"
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -432,18 +559,56 @@ export default function ToolsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#171717] mb-1.5">
-                  Kategori
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[#171717]">
+                    Kategori Tool
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingCategoryForm(!isAddingCategoryForm)}
+                    className="text-[11px] font-medium text-[#E66F52] hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{isAddingCategoryForm ? 'Pilih dari List' : '+ Kategori Baru'}</span>
+                  </button>
+                </div>
+
+                {isAddingCategoryForm ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newCategoryFormName}
+                      onChange={(e) => setNewCategoryFormName(e.target.value)}
+                      placeholder="Ketik kategori tool baru..."
+                      className="w-full px-4 py-2.5 rounded-xl bg-white border border-[#E66F52] text-sm focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newCategoryFormName.trim()) {
+                          handleAddCategory(newCategoryFormName);
+                          setFormData({ ...formData, category: newCategoryFormName.trim() });
+                          setNewCategoryFormName('');
+                          setIsAddingCategoryForm(false);
+                        }
+                      }}
+                      className="px-3 py-2.5 rounded-xl bg-[#E66F52] text-white text-xs font-semibold hover:bg-[#D65F42]"
+                    >
+                      Pakai
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                  >
+                    {categories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>

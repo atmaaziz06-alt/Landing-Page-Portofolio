@@ -201,6 +201,8 @@ function createMemoryDB() {
         updated_at: new Date().toISOString()
       }
     ],
+    events: [],
+    certifications: [],
     activity_logs: []
   };
 
@@ -560,6 +562,40 @@ export function initDB() {
         action TEXT NOT NULL,
         details TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        organizer TEXT,
+        date TEXT,
+        period TEXT,
+        location TEXT,
+        role TEXT,
+        description TEXT,
+        image_url TEXT,
+        link_url TEXT,
+        display_order INTEGER DEFAULT 0,
+        is_visible INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS certifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        issuer TEXT NOT NULL,
+        issue_date TEXT,
+        expiry_date TEXT,
+        credential_id TEXT,
+        credential_url TEXT,
+        image_url TEXT,
+        category TEXT,
+        description TEXT,
+        display_order INTEGER DEFAULT 0,
+        is_visible INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

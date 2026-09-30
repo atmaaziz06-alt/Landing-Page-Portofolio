@@ -3,7 +3,7 @@ import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { usePortfolioData } from '../context/PortfolioDataContext';
 
 export default function Navbar() {
-  const { settings, profile } = usePortfolioData();
+  const { settings, profile, events, certifications } = usePortfolioData();
   const brandName = settings?.brandName || profile?.brandName || 'Vezta Studio';
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -21,6 +21,8 @@ export default function Navbar() {
     { label: 'Experience', href: '#experience' },
     { label: 'About', href: '#about' },
     { label: 'Services', href: '#services' },
+    ...(certifications && certifications.length > 0 ? [{ label: 'Certificates', href: '#certifications' }] : []),
+    ...(events && events.length > 0 ? [{ label: 'Events', href: '#events' }] : []),
     { label: 'Contact', href: '#contact' },
   ];
 

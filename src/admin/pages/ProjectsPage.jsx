@@ -22,8 +22,13 @@ import {
   Eye,
   Sparkles,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Tag,
+  Check,
+  Crop as CropIcon
 } from 'lucide-react';
+import ImageCropModal from '../components/ImageCropModal';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 
 export default function ProjectsPage() {
   const toast = useToast();
@@ -70,7 +75,43 @@ export default function ProjectsPage() {
     isVisible: true
   });
 
-  const categories = ['Desain Grafis', 'Ai Video Content', 'UI/UX', 'Branding', 'Digital Marketing', 'Other'];
+  const defaultCategories = ['Desain Grafis', 'Ai Video Content', 'UI/UX', 'Branding', 'Digital Marketing', 'Other'];
+  const [customCategories, setCustomCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vezta_project_custom_categories');
+      return saved ? JSON.parse(saved) : defaultCategories;
+    } catch (_) {
+      return defaultCategories;
+    }
+  });
+
+  const categories = useMemo(() => {
+    const set = new Set(customCategories);
+    projects.forEach((p) => {
+      if (p.category && p.category.trim()) {
+        set.add(p.category.trim());
+      }
+    });
+    return Array.from(set);
+  }, [customCategories, projects]);
+
+  const [isAddingCategoryNav, setIsAddingCategoryNav] = useState(false);
+  const [newCategoryNavName, setNewCategoryNavName] = useState('');
+  const [isAddingCategoryForm, setIsAddingCategoryForm] = useState(false);
+  const [newCategoryFormName, setNewCategoryFormName] = useState('');
+
+  const handleAddCategory = (name) => {
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (!customCategories.includes(trimmed)) {
+      const updated = [...customCategories, trimmed];
+      setCustomCategories(updated);
+      try {
+        localStorage.setItem('vezta_project_custom_categories', JSON.stringify(updated));
+      } catch (_) {}
+      toast.success(`Kategori "${trimmed}" berhasil ditambahkan!`);
+    }
+  };
 
   const loadProjects = async () => {
     try {
@@ -394,13 +435,67 @@ export default function ProjectsPage() {
               onClick={() => setFilterCategory(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                 filterCategory === cat
-                  ? 'bg-[#E66F52] text-white'
+                  ? 'bg-[#E66F52] text-white shadow-2xs'
                   : 'bg-white/80 text-[#5F5A57] hover:bg-white hover:text-[#171717]'
               }`}
             >
               {cat}
             </button>
           ))}
+
+          {/* Quick Add Custom Category Button */}
+          {isAddingCategoryNav ? (
+            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-[#E66F52] shadow-2xs">
+              <input
+                type="text"
+                value={newCategoryNavName}
+                onChange={(e) => setNewCategoryNavName(e.target.value)}
+                placeholder="Nama kategori..."
+                className="text-xs px-2 py-1 outline-none w-28 text-[#171717]"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCategory(newCategoryNavName);
+                    if (newCategoryNavName.trim()) setFilterCategory(newCategoryNavName.trim());
+                    setNewCategoryNavName('');
+                    setIsAddingCategoryNav(false);
+                  } else if (e.key === 'Escape') {
+                    setIsAddingCategoryNav(false);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  handleAddCategory(newCategoryNavName);
+                  if (newCategoryNavName.trim()) setFilterCategory(newCategoryNavName.trim());
+                  setNewCategoryNavName('');
+                  setIsAddingCategoryNav(false);
+                }}
+                className="p-1 rounded-full bg-[#E66F52] text-white hover:bg-[#D65F42]"
+                title="Simpan Kategori"
+              >
+                <Check className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddingCategoryNav(false)}
+                className="p-1 rounded-full text-[#5F5A57] hover:bg-neutral-100"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAddingCategoryNav(true)}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/60 hover:bg-white text-[#E66F52] border border-dashed border-[#E66F52]/60 hover:border-[#E66F52] transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3 h-3" />
+              <span>+ Kategori</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -579,18 +674,56 @@ export default function ProjectsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#171717] mb-1.5">
-                    Kategori Project
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
-                  >
-                    {categories.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-[#171717]">
+                      Kategori Project
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategoryForm(!isAddingCategoryForm)}
+                      className="text-[11px] font-medium text-[#E66F52] hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{isAddingCategoryForm ? 'Pilih dari List' : '+ Kategori Baru'}</span>
+                    </button>
+                  </div>
+
+                  {isAddingCategoryForm ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newCategoryFormName}
+                        onChange={(e) => setNewCategoryFormName(e.target.value)}
+                        placeholder="Ketik kategori baru..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-white border border-[#E66F52] text-sm focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newCategoryFormName.trim()) {
+                            handleAddCategory(newCategoryFormName);
+                            setFormData({ ...formData, category: newCategoryFormName.trim() });
+                            setNewCategoryFormName('');
+                            setIsAddingCategoryForm(false);
+                          }
+                        }}
+                        className="px-3 py-2.5 rounded-xl bg-[#E66F52] text-white text-xs font-semibold hover:bg-[#D65F42]"
+                      >
+                        Pakai
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-sm focus:border-[#E66F52] focus:outline-none"
+                    >
+                      {categories.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
