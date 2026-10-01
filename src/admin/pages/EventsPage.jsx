@@ -300,13 +300,18 @@ export default function EventsPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await api.deleteEvent(deleteTarget.id).catch(() => null);
-      toast.success('Event berhasil dihapus.');
-      const remaining = events.filter((e) => e.id !== deleteTarget.id);
-      setEvents(remaining);
-      syncCache(remaining);
-      if (portfolioData?.refreshData) portfolioData.refreshData();
-      setDeleteTarget(null);
+      const res = await api.deleteEvent(deleteTarget.id);
+      if (res && res.success) {
+        toast.success('Event berhasil dihapus.');
+        const remaining = events.filter((e) => e.id !== deleteTarget.id);
+        setEvents(remaining);
+        syncCache(remaining);
+        if (portfolioData?.refreshData) portfolioData.refreshData();
+        setDeleteTarget(null);
+        await loadEvents();
+      } else {
+        throw new Error(res?.message || 'Gagal menghapus event dari server.');
+      }
     } catch (err) {
       toast.error('Gagal menghapus event: ' + err.message);
     } finally {

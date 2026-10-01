@@ -203,38 +203,8 @@ function createMemoryDB() {
         updated_at: new Date().toISOString()
       }
     ],
-    events: initialEvents.map((e, idx) => ({
-      id: idx + 1,
-      title: e.title,
-      organizer: e.organizer || '',
-      date: e.date || '',
-      period: e.period || '',
-      location: e.location || '',
-      role: e.role || '',
-      description: e.description || '',
-      image_url: e.imageUrl || '',
-      link_url: e.linkUrl || '',
-      display_order: e.displayOrder || idx + 1,
-      is_visible: e.isVisible ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    certifications: initialCertifications.map((c, idx) => ({
-      id: idx + 1,
-      title: c.title,
-      issuer: c.issuer,
-      issue_date: c.issueDate || '',
-      expiry_date: c.expiryDate || '',
-      credential_id: c.credentialId || '',
-      credential_url: c.credentialUrl || '',
-      image_url: c.imageUrl || '',
-      category: c.category || 'General',
-      description: c.description || '',
-      display_order: c.displayOrder || idx + 1,
-      is_visible: c.isVisible ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
+    events: [],
+    certifications: [],
     activity_logs: []
   };
 

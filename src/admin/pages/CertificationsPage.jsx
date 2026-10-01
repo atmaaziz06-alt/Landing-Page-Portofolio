@@ -311,13 +311,18 @@ export default function CertificationsPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await api.deleteCertification(deleteTarget.id).catch(() => null);
-      toast.success('Sertifikasi berhasil dihapus.');
-      const remaining = certifications.filter((c) => c.id !== deleteTarget.id);
-      setCertifications(remaining);
-      syncCache(remaining);
-      if (portfolioData?.refreshData) portfolioData.refreshData();
-      setDeleteTarget(null);
+      const res = await api.deleteCertification(deleteTarget.id);
+      if (res && res.success) {
+        toast.success('Sertifikasi berhasil dihapus.');
+        const remaining = certifications.filter((c) => c.id !== deleteTarget.id);
+        setCertifications(remaining);
+        syncCache(remaining);
+        if (portfolioData?.refreshData) portfolioData.refreshData();
+        setDeleteTarget(null);
+        await loadCertifications();
+      } else {
+        throw new Error(res?.message || 'Gagal menghapus sertifikasi dari server.');
+      }
     } catch (err) {
       toast.error('Gagal menghapus sertifikasi: ' + err.message);
     } finally {
