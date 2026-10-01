@@ -1,11 +1,11 @@
-// src/admin/pages/CertificationsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import ImageCropModal from '../components/ImageCropModal';
+import CategoryManageModal from '../components/CategoryManageModal';
 import { usePortfolioData } from '../../context/PortfolioDataContext';
 import {
   Award,
@@ -23,8 +23,8 @@ import {
   FileCheck,
   CheckCircle2,
   Eye,
-  Crop as CropIcon,
-  Image as ImageIcon
+  Tag,
+  Crop as CropIcon
 } from 'lucide-react';
 
 export default function CertificationsPage() {
@@ -67,7 +67,87 @@ export default function CertificationsPage() {
     isVisible: true
   });
 
-  const categories = ['Desain Grafis', 'Artificial Intelligence', 'UI/UX Design', 'Web Development', 'Digital Marketing', 'General'];
+  const DEFAULT_CATEGORIES = [
+    'Desain Grafis',
+    'UI/UX Design',
+    'Web Development',
+    'Artificial Intelligence',
+    'Digital Marketing',
+    'General'
+  ];
+
+  const [customCategories, setCustomCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vezta_cert_custom_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return DEFAULT_CATEGORIES;
+  });
+
+  const [isManageCatOpen, setIsManageCatOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('ALL');
+
+  const categories = useMemo(() => {
+    const set = new Set([...customCategories]);
+    certifications.forEach((c) => {
+      if (c.category && c.category.trim()) {
+        set.add(c.category.trim());
+      }
+    });
+    return Array.from(set);
+  }, [customCategories, certifications]);
+
+  const handleAddCategory = (name) => {
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (!categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...customCategories, trimmed];
+      setCustomCategories(updated);
+      try {
+        localStorage.setItem('vezta_cert_custom_categories', JSON.stringify(updated));
+      } catch (_) {}
+      toast.success(`Kategori "${trimmed}" berhasil ditambahkan!`);
+    } else {
+      toast.error(`Kategori "${trimmed}" sudah ada.`);
+    }
+  };
+
+  const handleDeleteCategory = async (catToDelete, fallbackCategory) => {
+    // 1. Reassign affected certifications
+    const affected = certifications.filter((c) => (c.category || '').trim() === catToDelete);
+    if (affected.length > 0) {
+      for (const cert of affected) {
+        await api.updateCertification(cert.id, {
+          ...cert,
+          category: fallbackCategory
+        });
+      }
+      setCertifications((prev) =>
+        prev.map((c) =>
+          (c.category || '').trim() === catToDelete ? { ...c, category: fallbackCategory } : c
+        )
+      );
+    }
+
+    // 2. Remove from custom categories
+    const updated = customCategories.filter((c) => c !== catToDelete);
+    setCustomCategories(updated);
+    try {
+      localStorage.setItem('vezta_cert_custom_categories', JSON.stringify(updated));
+    } catch (_) {}
+
+    // 3. Reset filter if needed
+    if (filterCategory === catToDelete) {
+      setFilterCategory('ALL');
+    }
+
+    toast.success(`Kategori "${catToDelete}" berhasil dihapus.`);
+    await loadCertifications();
+    if (portfolioData?.refreshData) portfolioData.refreshData();
+  };
 
   // Helper to optimize and convert certificate image to crisp Data URL
   const processCertificateImage = (file) => {
@@ -332,12 +412,16 @@ export default function CertificationsPage() {
 
   const filteredCerts = certifications.filter((item) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       item.title.toLowerCase().includes(query) ||
       (item.issuer && item.issuer.toLowerCase().includes(query)) ||
       (item.credentialId && item.credentialId.toLowerCase().includes(query)) ||
-      (item.category && item.category.toLowerCase().includes(query))
-    );
+      (item.category && item.category.toLowerCase().includes(query));
+
+    const matchesCategory =
+      filterCategory === 'ALL' ? true : (item.category || '').trim() === filterCategory;
+
+    return matchesSearch && matchesCategory;
   });
 
   return (
@@ -353,30 +437,76 @@ export default function CertificationsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Sertifikasi</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsManageCatOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-neutral-100 text-[#171717] text-xs sm:text-sm font-medium border border-[rgba(23,23,23,0.08)] shadow-2xs transition-all duration-200 cursor-pointer"
+            title="Kelola Kategori (Tambah & Hapus)"
+          >
+            <Tag className="w-4 h-4 text-[#E66F52]" />
+            <span>Kelola Kategori</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-xs sm:text-sm font-medium shadow-card hover:shadow-subtle transition-all duration-200 cursor-pointer hover-lift"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Sertifikasi</span>
+          </button>
+        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-[#FBEFE9] p-4 rounded-2xl border border-[rgba(23,23,23,0.06)] flex items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#5F5A57] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari sertifikasi, penerbit, nomor ID..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.08)] text-xs sm:text-sm focus:border-[#E66F52] focus:outline-none"
-          />
+      {/* Filter, Search & Category Controls */}
+      <div className="space-y-3 bg-[#FBEFE9] p-4 rounded-2xl border border-[rgba(23,23,23,0.06)]">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-[#5F5A57] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari sertifikasi, penerbit, nomor ID..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.08)] text-xs sm:text-sm focus:border-[#E66F52] focus:outline-none"
+            />
+          </div>
+          <div className="text-xs text-[#5F5A57] font-medium hidden sm:block">
+            Menampilkan: <span className="font-semibold text-[#171717]">{filteredCerts.length}</span> dari {certifications.length} sertifikat
+          </div>
         </div>
-        <div className="text-xs text-[#5F5A57] font-medium hidden sm:block">
-          Total: {certifications.length} sertifikat
+
+        {/* Category Pills Filter */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-[rgba(23,23,23,0.04)] custom-scrollbar">
+          <button
+            type="button"
+            onClick={() => setFilterCategory('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+              filterCategory === 'ALL'
+                ? 'bg-[#171717] text-white shadow-2xs'
+                : 'bg-white/80 text-[#5F5A57] hover:text-[#171717] hover:bg-white'
+            }`}
+          >
+            Semua ({certifications.length})
+          </button>
+          {categories.map((cat) => {
+            const count = certifications.filter((c) => (c.category || '').trim() === cat).length;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setFilterCategory(cat)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+                  filterCategory === cat
+                    ? 'bg-[#E66F52] text-white shadow-2xs font-semibold'
+                    : 'bg-white/80 text-[#5F5A57] hover:text-[#171717] hover:bg-white'
+                }`}
+              >
+                {cat} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -593,9 +723,19 @@ export default function CertificationsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#171717] mb-1.5">
-                    Bidang / Kategori
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-[#171717]">
+                      Bidang / Kategori *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsManageCatOpen(true)}
+                      className="text-[11px] text-[#E66F52] hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                    >
+                      <Tag className="w-3 h-3" />
+                      <span>Kelola Kategori</span>
+                    </button>
+                  </div>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -879,6 +1019,19 @@ export default function CertificationsPage() {
         initialAspect={1.333} // 4:3
         circular={false}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Category Management Modal */}
+      <CategoryManageModal
+        isOpen={isManageCatOpen}
+        onClose={() => setIsManageCatOpen(false)}
+        title="Kelola Kategori Sertifikasi"
+        itemTypeLabel="sertifikat"
+        categories={categories}
+        items={certifications}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+        defaultFallback="General"
       />
     </div>
   );

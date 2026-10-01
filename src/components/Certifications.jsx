@@ -1,5 +1,4 @@
-// src/components/Certifications.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { usePortfolioData } from '../context/PortfolioDataContext';
 import SectionHeading from './SectionHeading';
 import Reveal from './Reveal';
@@ -9,11 +8,39 @@ import { Award, ExternalLink, Calendar, CheckCircle2, Eye, FileCheck, ArrowUpRig
 export default function Certifications() {
   const { certifications } = usePortfolioData();
   const [activeCert, setActiveCert] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('Semua');
 
   // Filter strictly to visible certifications only
-  const visibleCertifications = (certifications || []).filter(
-    (item) => item && item.isVisible !== false
-  );
+  const visibleCertifications = useMemo(() => {
+    return (certifications || []).filter(
+      (item) => item && item.isVisible !== false
+    );
+  }, [certifications]);
+
+  // Extract all categories dynamically from visible certifications
+  const categories = useMemo(() => {
+    const set = new Set(['Semua']);
+    visibleCertifications.forEach((c) => {
+      if (c.category && c.category.trim()) {
+        set.add(c.category.trim());
+      }
+    });
+    return Array.from(set);
+  }, [visibleCertifications]);
+
+  // Auto-reset active category if it no longer exists
+  useEffect(() => {
+    if (activeCategory !== 'Semua' && !categories.includes(activeCategory)) {
+      setActiveCategory('Semua');
+    }
+  }, [categories, activeCategory]);
+
+  // Filter certifications by selected category
+  const filteredCertifications = useMemo(() => {
+    return visibleCertifications.filter((item) =>
+      activeCategory === 'Semua' ? true : (item.category || '').trim() === activeCategory
+    );
+  }, [visibleCertifications, activeCategory]);
 
   // CRITICAL REQUIREMENT: Do NOT render section on landing page if empty!
   if (!visibleCertifications || visibleCertifications.length === 0) {
@@ -24,7 +51,7 @@ export default function Certifications() {
     <section id="certifications" className="py-20 md:py-28 lg:py-36 bg-[#F6E7DF]/40 overflow-hidden">
       <div className="max-w-[1240px] mx-auto px-5 sm:px-8">
         
-        {/* Section Heading */}
+        {/* Section Heading with Dynamic Category Filter Pills */}
         <Reveal variant="fade-up">
           <SectionHeading
             eyebrow="VERIFIED CREDENTIALS"
@@ -35,12 +62,40 @@ export default function Certifications() {
               </>
             }
             description="Bukti kredensial terverifikasi dari berbagai lembaga kredibel yang menguji dan mengakui standar keahlian. Klik untuk melihat detail sertifikat selengkapnya."
+            action={
+              categories.length > 1 && (
+                <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-full bg-white/70 backdrop-blur-md border border-[rgba(23,23,23,0.06)] shadow-xs overflow-x-auto max-w-full">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                        activeCategory === cat
+                          ? 'bg-[#E66F52] text-white shadow-xs font-semibold'
+                          : 'text-[#5F5A57] hover:text-[#171717] hover:bg-black/[0.03]'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )
+            }
           />
         </Reveal>
 
         {/* Certifications Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-12">
-          {visibleCertifications.map((item, index) => (
+        {filteredCertifications.length === 0 ? (
+          <div className="text-center py-16 bg-white/50 rounded-3xl border border-[rgba(23,23,23,0.06)] mt-8">
+            <Award className="w-10 h-10 text-[#5F5A57]/40 mx-auto mb-3" />
+            <p className="text-sm text-[#5F5A57] font-medium">
+              Belum ada sertifikasi dalam kategori "{activeCategory}".
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-12">
+            {filteredCertifications.map((item, index) => (
             <Reveal
               key={item.id || index}
               variant="fade-up"
@@ -142,6 +197,7 @@ export default function Certifications() {
             </Reveal>
           ))}
         </div>
+      )}
 
       </div>
 
