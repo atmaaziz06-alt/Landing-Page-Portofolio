@@ -103,7 +103,15 @@ function getInitialPublicState() {
   if (typeof window === 'undefined') {
     return normalizeFromSnapshot(null);
   }
-  return normalizeFromSnapshot(getPublishedContent());
+  const published = getPublishedContent();
+  console.log('[Vezta Sync] landing init', {
+    hasPublished: Boolean(published),
+    updatedAt: published?.updatedAt,
+    profileName: published?.profile?.name,
+    historyLength: readHistory().length,
+    snapshotName: readSnapshot()?.profile?.name
+  });
+  return normalizeFromSnapshot(published);
 }
 
 export function PortfolioDataProvider({ children }) {
@@ -122,6 +130,11 @@ export function PortfolioDataProvider({ children }) {
 
   const applyPublishedContent = useCallback((snapshot) => {
     const next = normalizeFromSnapshot(snapshot);
+    console.log('[Vezta Sync] landing apply', {
+      profileName: next.profile?.name,
+      projects: next.projects?.length,
+      updatedAt: snapshot?.updatedAt
+    });
     setProfile(next.profile);
     setProjects(next.projects);
     setExperience(next.experience);
@@ -194,8 +207,16 @@ export function PortfolioDataProvider({ children }) {
   }, [applyPublishedContent]);
 
   const publishUpdate = useCallback(async (meta) => {
+    console.log('[Vezta Sync] admin save start', meta);
     const entry = await publishContentUpdate(meta);
-    applyPublishedContent(getPublishedContent());
+    const published = entry?.snapshot || getPublishedContent();
+    applyPublishedContent(published);
+    console.log('[Vezta Sync] admin save done', {
+      ok: Boolean(entry),
+      section: entry?.section,
+      profileName: published?.profile?.name,
+      timestamp: entry?.timestamp
+    });
     return entry;
   }, [applyPublishedContent]);
 
@@ -215,7 +236,8 @@ export function PortfolioDataProvider({ children }) {
   }, [fetchPublicData]);
 
   useEffect(() => {
-    return subscribeContentUpdates(() => {
+    return subscribeContentUpdates((detail) => {
+      console.log('[Vezta Sync] landing received update event', detail);
       hydrateFromStorage();
     });
   }, [hydrateFromStorage]);

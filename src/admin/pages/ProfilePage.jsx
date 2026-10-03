@@ -207,6 +207,11 @@ export default function ProfilePage() {
       } catch (_) {}
 
       const res = await api.updateProfile(formData);
+      console.log('[Vezta Sync] ProfilePage handleSave', {
+        apiOk: res?.success,
+        name: formData.name,
+        role: formData.role
+      });
       if (res.success) {
         toast.success('Profil & foto berhasil diperbarui dan tersimpan di database!');
         await publishUpdate({

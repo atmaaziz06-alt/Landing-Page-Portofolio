@@ -116,6 +116,16 @@ export async function publishContentUpdate({
     ...(patch && typeof patch === 'object' ? patch : {})
   };
 
+  console.log('[Vezta Sync] handleSave/publish', {
+    section,
+    sectionKey,
+    action,
+    details,
+    hasPatch: Boolean(patch),
+    patchKeys: patch && typeof patch === 'object' ? Object.keys(patch) : [],
+    profileName: snapshot?.profile?.name
+  });
+
   return recordContentUpdate({
     section,
     sectionKey,

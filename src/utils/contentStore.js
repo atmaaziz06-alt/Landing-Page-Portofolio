@@ -10,6 +10,10 @@ export const CONTENT_STORAGE_KEYS = {
 export const HISTORY_LIMIT = 40;
 export const HISTORY_PAGE_SIZE = 10;
 
+const SYNC_LOG = '[Vezta Sync]';
+
+let memoryPublished = null;
+
 const SECTION_KEYS = [
   'profile',
   'projects',
@@ -75,10 +79,12 @@ function compactHistory(entries) {
 function syncPublishedFromHistory(entries) {
   const latest = entries[0];
   if (latest?.snapshot && typeof latest.snapshot === 'object') {
+    memoryPublished = latest.snapshot;
     writeSnapshot(latest.snapshot);
     return latest.snapshot;
   }
-  return readSnapshot();
+  memoryPublished = readSnapshot();
+  return memoryPublished;
 }
 
 function commitHistory(entries, extraBroadcast = {}) {
@@ -178,14 +184,33 @@ export function restoreBeforeHistoryEntry(entryId) {
 }
 
 function persistHistory(entries) {
-  const limited = compactHistory(entries.slice(0, HISTORY_LIMIT));
-  if (writeJson(CONTENT_STORAGE_KEYS.HISTORY, limited)) return true;
+  const light = entries.slice(0, HISTORY_LIMIT).map((entry, index) => {
+    if (!entry) return entry;
+    const { previousSnapshot, ...rest } = entry;
+    if (index === 0) return rest;
+    const { snapshot, ...meta } = rest;
+    return meta;
+  });
 
-  const tighter = compactHistory(limited.slice(0, 12));
+  if (writeJson(CONTENT_STORAGE_KEYS.HISTORY, light)) return true;
+
+  const tighter = compactHistory(light.slice(0, 8));
   if (writeJson(CONTENT_STORAGE_KEYS.HISTORY, tighter)) return true;
 
-  const minimal = compactHistory(limited.slice(0, 4));
-  return writeJson(CONTENT_STORAGE_KEYS.HISTORY, minimal);
+  const latest = light[0];
+  if (!latest) return writeJson(CONTENT_STORAGE_KEYS.HISTORY, []);
+  const { snapshot, ...latestMeta } = latest;
+  return writeJson(CONTENT_STORAGE_KEYS.HISTORY, compactHistory([{ ...latestMeta, snapshot }]));
+}
+
+function pickNewestSnapshot(candidates) {
+  const valid = candidates.filter((item) => item && typeof item === 'object');
+  if (!valid.length) return null;
+  return valid.reduce((newest, item) => {
+    const newestTs = Date.parse(newest?.updatedAt || newest?.timestamp || 0) || 0;
+    const itemTs = Date.parse(item?.updatedAt || item?.timestamp || 0) || 0;
+    return itemTs >= newestTs ? item : newest;
+  });
 }
 
 export function getLatestHistoryEntry() {
@@ -195,10 +220,13 @@ export function getLatestHistoryEntry() {
 
 export function getPublishedContent() {
   const latest = getLatestHistoryEntry();
-  if (latest?.snapshot && typeof latest.snapshot === 'object') {
-    return latest.snapshot;
-  }
-  return readSnapshot();
+  const published = pickNewestSnapshot([
+    memoryPublished,
+    latest?.snapshot,
+    readSnapshot()
+  ]);
+  if (published) memoryPublished = published;
+  return published;
 }
 
 export function visibleOnly(items) {
@@ -292,7 +320,10 @@ export function recordContentUpdate({
   details = '',
   snapshot
 } = {}) {
-  if (!snapshot || typeof snapshot !== 'object') return null;
+  if (!snapshot || typeof snapshot !== 'object') {
+    console.warn(SYNC_LOG, 'recordContentUpdate skipped: snapshot empty', { section, action });
+    return null;
+  }
 
   const previous = getPublishedContent() || readSnapshot() || {};
   const stamped = {
@@ -300,7 +331,8 @@ export function recordContentUpdate({
     updatedAt: snapshot.updatedAt || new Date().toISOString()
   };
 
-  writeSnapshot(stamped);
+  memoryPublished = stamped;
+  const snapshotOk = writeSnapshot(stamped);
 
   const entry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -316,7 +348,21 @@ export function recordContentUpdate({
   };
 
   const history = [entry, ...readHistory().filter((item) => item?.id !== entry.id)];
-  persistHistory(history);
+  const historyOk = persistHistory(history);
+
+  console.log(SYNC_LOG, 'saved', {
+    section,
+    sectionKey,
+    action,
+    details: entry.details,
+    timestamp: entry.timestamp,
+    snapshotOk,
+    historyOk,
+    historyLength: readHistory().length,
+    profileName: stamped?.profile?.name,
+    source: 'recordContentUpdate'
+  });
+
   broadcastContentUpdate({
     id: entry.id,
     section,

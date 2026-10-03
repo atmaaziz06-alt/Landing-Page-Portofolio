@@ -13,16 +13,22 @@ import ContactCTA from './components/ContactCTA';
 import Footer from './components/Footer';
 import CustomCursor from './components/CustomCursor';
 import { useAuth } from './context/AuthContext';
+import { usePortfolioData } from './context/PortfolioDataContext';
 
 export default function App() {
   const { isAuthenticated, logout } = useAuth();
+  const { hydrateFromStorage } = usePortfolioData();
 
-  // Auto logout whenever leaving admin and visiting public page
   React.useEffect(() => {
     if (isAuthenticated) {
       logout();
     }
   }, [isAuthenticated, logout]);
+
+  React.useEffect(() => {
+    console.log('[Vezta Sync] landing mounted, re-fetch from storage');
+    hydrateFromStorage();
+  }, [hydrateFromStorage]);
 
   return (
     <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
