@@ -9,6 +9,7 @@ export default function ConfirmModal({
   confirmText = 'Hapus',
   cancelText = 'Batal',
   isLoading = false,
+  variant = 'danger',
   onConfirm,
   onClose
 }) {
@@ -26,7 +27,11 @@ export default function ConfirmModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+              variant === 'primary' ? 'bg-[#E66F52]/15 text-[#E66F52]' : 'bg-red-100 text-red-600'
+            }`}
+          >
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
@@ -48,7 +53,9 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium text-white shadow-sm transition-colors cursor-pointer disabled:opacity-50 ${
+              variant === 'primary' ? 'bg-[#E66F52] hover:bg-[#D65F42]' : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>{confirmText}</span>

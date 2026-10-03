@@ -8,6 +8,7 @@ export const CONTENT_STORAGE_KEYS = {
 };
 
 export const HISTORY_LIMIT = 40;
+export const HISTORY_PAGE_SIZE = 10;
 
 const SECTION_KEYS = [
   'profile',
@@ -61,9 +62,118 @@ export function readHistory() {
 function compactHistory(entries) {
   return entries.map((entry, index) => {
     if (index === 0) return entry;
-    if (!entry?.snapshot) return entry;
-    const { snapshot, ...rest } = entry;
-    return rest;
+    if (!entry) return entry;
+    const next = { ...entry };
+    delete next.snapshot;
+    if (index >= HISTORY_PAGE_SIZE) {
+      delete next.previousSnapshot;
+    }
+    return next;
+  });
+}
+
+function syncPublishedFromHistory(entries) {
+  const latest = entries[0];
+  if (latest?.snapshot && typeof latest.snapshot === 'object') {
+    writeSnapshot(latest.snapshot);
+    return latest.snapshot;
+  }
+  return readSnapshot();
+}
+
+function commitHistory(entries, extraBroadcast = {}) {
+  persistHistory(entries);
+  syncPublishedFromHistory(entries);
+  broadcastContentUpdate({ type: 'history-changed', ...extraBroadcast });
+  return readHistory();
+}
+
+function applyPreviousSection(base = {}, sectionKey, previousSectionData) {
+  if (previousSectionData == null) return base;
+  if (
+    sectionKey === 'contact' &&
+    typeof previousSectionData === 'object' &&
+    !Array.isArray(previousSectionData)
+  ) {
+    return {
+      ...base,
+      contact: previousSectionData.contact ?? base.contact,
+      socials: previousSectionData.socials ?? base.socials
+    };
+  }
+  if (sectionKey) {
+    return { ...base, [sectionKey]: previousSectionData };
+  }
+  if (typeof previousSectionData === 'object' && !Array.isArray(previousSectionData)) {
+    return { ...base, ...previousSectionData };
+  }
+  return base;
+}
+
+export function getRestoreSnapshot(entry, history = readHistory()) {
+  if (!entry) return null;
+  const index = history.findIndex((item) => item?.id === entry.id);
+  const older = index >= 0 ? history[index + 1] : null;
+  if (older?.snapshot && typeof older.snapshot === 'object') return older.snapshot;
+  if (entry.previousSnapshot && typeof entry.previousSnapshot === 'object') {
+    return entry.previousSnapshot;
+  }
+
+  const current = getPublishedContent() || readSnapshot() || {};
+  if (entry.previousSectionData != null) {
+    return applyPreviousSection(current, entry.sectionKey, entry.previousSectionData);
+  }
+  if (older?.sectionData != null && older.sectionKey) {
+    return applyPreviousSection(current, older.sectionKey, older.sectionData);
+  }
+  return null;
+}
+
+export function canRestoreHistoryEntry(entry, history = readHistory()) {
+  return Boolean(getRestoreSnapshot(entry, history));
+}
+
+export function deleteHistoryEntry(entryId) {
+  if (!entryId) return readHistory();
+  const history = readHistory();
+  const index = history.findIndex((item) => item?.id === entryId);
+  if (index < 0) return history;
+
+  const removed = history[index];
+  const remaining = history.filter((item) => item?.id !== entryId);
+
+  if (index === 0 && remaining[0] && !remaining[0].snapshot) {
+    const fallback = removed?.previousSnapshot || remaining[0].previousSnapshot;
+    if (fallback && typeof fallback === 'object') {
+      remaining[0] = { ...remaining[0], snapshot: fallback };
+    }
+  }
+
+  return commitHistory(remaining, { action: 'history-delete', id: entryId });
+}
+
+export function deleteOldestHistory(count = HISTORY_PAGE_SIZE) {
+  const history = readHistory();
+  const removeCount = Math.min(Math.max(0, count), history.length);
+  if (!removeCount) return history;
+  const remaining = history.slice(0, history.length - removeCount);
+  return commitHistory(remaining, { action: 'history-delete-oldest', count: removeCount });
+}
+
+export function restoreBeforeHistoryEntry(entryId) {
+  const history = readHistory();
+  const entry = history.find((item) => item?.id === entryId);
+  if (!entry) return null;
+
+  const restored = getRestoreSnapshot(entry, history);
+  if (!restored || typeof restored !== 'object') return null;
+
+  return recordContentUpdate({
+    section: entry.section || 'Konten',
+    sectionKey: entry.sectionKey || '',
+    action: 'Pulihkan',
+    details: `Kembali ke versi sebelum: ${entry.details || entry.section || 'update ini'}`,
+    snapshot: restored
   });
 }
 
@@ -200,6 +310,7 @@ export function recordContentUpdate({
     action,
     details: details || '',
     snapshot: stamped,
+    previousSnapshot: previous && Object.keys(previous).length ? previous : null,
     sectionData: pickSectionData(stamped, sectionKey),
     previousSectionData: pickSectionData(previous, sectionKey)
   };
