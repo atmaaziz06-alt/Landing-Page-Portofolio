@@ -8,6 +8,7 @@ import CategoryManageModal from '../components/CategoryManageModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { resolveToolIcon, autoOptimizeImage } from '../../utils/toolIcons';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 import {
   Wrench,
   Plus,
@@ -31,6 +32,7 @@ import {
 
 export default function ToolsPage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [tools, setTools] = useState([]);
@@ -124,6 +126,17 @@ export default function ToolsPage() {
     }
 
     toast.success(`Kategori "${catToDelete}" berhasil dihapus.`);
+    await publishUpdate({
+      section: 'Tools',
+      sectionKey: 'tools',
+      action: 'Update',
+      details: `Kategori "${catToDelete}" dihapus`,
+      patch: {
+        tools: tools.map((t) =>
+          (t.category || '').trim() === catToDelete ? { ...t, category: fallbackCategory } : t
+        )
+      }
+    });
   };
 
   const handleMoveCategory = async (tool, newCategory) => {
@@ -143,6 +156,14 @@ export default function ToolsPage() {
         prev.map((t) => (t.id === tool.id ? { ...t, category: newCategory } : t))
       );
       toast.success(`"${tool.name}" dipindahkan ke kategori "${newCategory}"!`);
+      const nextList = tools.map((t) => (t.id === tool.id ? { ...t, category: newCategory } : t));
+      await publishUpdate({
+        section: 'Tools',
+        sectionKey: 'tools',
+        action: 'Update',
+        details: `${tool.name} → ${newCategory}`,
+        patch: { tools: nextList }
+      });
     } catch (err) {
       toast.error('Gagal memindahkan kategori: ' + err.message);
     }
@@ -218,10 +239,16 @@ export default function ToolsPage() {
     try {
       const res = await api.toggleToolVisibility(item.id, nextState);
       if (res.success) {
-        setTools((prev) =>
-          prev.map((t) => (t.id === item.id ? { ...t, isVisible: nextState } : t))
-        );
+        const nextList = tools.map((t) => (t.id === item.id ? { ...t, isVisible: nextState } : t));
+        setTools(nextList);
         toast.success(res.message);
+        await publishUpdate({
+          section: 'Tools',
+          sectionKey: 'tools',
+          action: 'Update',
+          details: `${item.name} — ${nextState ? 'ditampilkan' : 'disembunyikan'}`,
+          patch: { tools: nextList }
+        });
       }
     } catch (err) {
       toast.error('Gagal mengubah visibilitas: ' + err.message);
@@ -242,11 +269,19 @@ export default function ToolsPage() {
       displayOrder: idx + 1
     }));
 
-    setTools(newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 })));
+    const ordered = newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 }));
+    setTools(ordered);
 
     try {
       await api.reorderTools(payload);
       toast.success('Urutan tool berhasil diperbarui.');
+      await publishUpdate({
+        section: 'Tools',
+        sectionKey: 'tools',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { tools: ordered }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadTools();
@@ -329,14 +364,26 @@ export default function ToolsPage() {
         if (res.success) {
           toast.success('Tool berhasil diperbarui.');
           setIsFormOpen(false);
-          loadTools();
+          await loadTools();
+          await publishUpdate({
+            section: 'Tools',
+            sectionKey: 'tools',
+            action: 'Update',
+            details: formData.name
+          });
         }
       } else {
         const res = await api.createTool(formData);
         if (res.success) {
           toast.success('Tool baru berhasil ditambahkan.');
           setIsFormOpen(false);
-          loadTools();
+          await loadTools();
+          await publishUpdate({
+            section: 'Tools',
+            sectionKey: 'tools',
+            action: 'Tambah',
+            details: formData.name
+          });
         }
       }
     } catch (err) {
@@ -353,8 +400,16 @@ export default function ToolsPage() {
       const res = await api.deleteTool(deleteTarget.id);
       if (res.success) {
         toast.success(res.message);
-        setTools((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+        const remaining = tools.filter((t) => t.id !== deleteTarget.id);
+        setTools(remaining);
         setDeleteTarget(null);
+        await publishUpdate({
+          section: 'Tools',
+          sectionKey: 'tools',
+          action: 'Hapus',
+          details: deleteTarget.name,
+          patch: { tools: remaining }
+        });
       }
     } catch (err) {
       toast.error('Gagal menghapus tool: ' + err.message);

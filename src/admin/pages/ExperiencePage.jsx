@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 import {
   Briefcase,
   Plus,
@@ -24,6 +25,7 @@ import {
 
 export default function ExperiencePage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [experiences, setExperiences] = useState([]);
@@ -116,10 +118,18 @@ export default function ExperiencePage() {
     try {
       const res = await api.toggleExperienceVisibility(item.id, nextState);
       if (res.success) {
-        setExperiences((prev) =>
-          prev.map((exp) => (exp.id === item.id ? { ...exp, isVisible: nextState } : exp))
+        const nextList = experiences.map((exp) =>
+          exp.id === item.id ? { ...exp, isVisible: nextState } : exp
         );
+        setExperiences(nextList);
         toast.success(res.message);
+        await publishUpdate({
+          section: 'Experience',
+          sectionKey: 'experience',
+          action: 'Update',
+          details: `${item.company} — ${nextState ? 'ditampilkan' : 'disembunyikan'}`,
+          patch: { experience: nextList }
+        });
       }
     } catch (err) {
       toast.error('Gagal mengubah visibilitas: ' + err.message);
@@ -141,11 +151,19 @@ export default function ExperiencePage() {
       displayOrder: idx + 1
     }));
 
-    setExperiences(newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 })));
+    const ordered = newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 }));
+    setExperiences(ordered);
 
     try {
       await api.reorderExperience(payload);
       toast.success('Urutan pengalaman kerja berhasil diperbarui.');
+      await publishUpdate({
+        section: 'Experience',
+        sectionKey: 'experience',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { experience: ordered }
+      });
     } catch (err) {
       toast.error('Gagal menyimpan urutan baru: ' + err.message);
       loadExperiences();
@@ -175,14 +193,26 @@ export default function ExperiencePage() {
         if (res.success) {
           toast.success('Data pengalaman kerja berhasil diperbarui.');
           setIsFormOpen(false);
-          loadExperiences();
+          await loadExperiences();
+          await publishUpdate({
+            section: 'Experience',
+            sectionKey: 'experience',
+            action: 'Update',
+            details: payload.company
+          });
         }
       } else {
         const res = await api.createExperience(payload);
         if (res.success) {
           toast.success('Pengalaman kerja baru berhasil ditambahkan.');
           setIsFormOpen(false);
-          loadExperiences();
+          await loadExperiences();
+          await publishUpdate({
+            section: 'Experience',
+            sectionKey: 'experience',
+            action: 'Tambah',
+            details: payload.company
+          });
         }
       }
     } catch (err) {
@@ -199,8 +229,16 @@ export default function ExperiencePage() {
       const res = await api.deleteExperience(deleteTarget.id);
       if (res.success) {
         toast.success(res.message);
-        setExperiences((prev) => prev.filter((exp) => exp.id !== deleteTarget.id));
+        const remaining = experiences.filter((exp) => exp.id !== deleteTarget.id);
+        setExperiences(remaining);
         setDeleteTarget(null);
+        await publishUpdate({
+          section: 'Experience',
+          sectionKey: 'experience',
+          action: 'Hapus',
+          details: deleteTarget.company,
+          patch: { experience: remaining }
+        });
       }
     } catch (err) {
       toast.error('Gagal menghapus pengalaman: ' + err.message);

@@ -1,7 +1,7 @@
 // src/admin/pages/ContactPage.jsx
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { useToast } from '../../context/ToastContext';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 import ConfirmModal from '../components/ConfirmModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
@@ -24,6 +24,7 @@ import {
 
 export default function ContactPage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingContact, setIsSavingContact] = useState(false);
 
@@ -94,6 +95,13 @@ export default function ContactPage() {
       const res = await api.updateContact(contactData);
       if (res.success) {
         toast.success('Pengaturan kontak & CTA berhasil diperbarui!');
+        await publishUpdate({
+          section: 'Contact / CTA',
+          sectionKey: 'contact',
+          action: 'Update',
+          details: 'Teks CTA, email, dan tombol',
+          patch: { contact: contactData }
+        });
       }
     } catch (err) {
       toast.error('Gagal menyimpan kontak: ' + err.message);
@@ -136,6 +144,14 @@ export default function ContactPage() {
           prev.map((s) => (s.id === soc.id ? { ...s, isVisible: nextState } : s))
         );
         toast.success(res.message);
+        const nextList = socials.map((s) => (s.id === soc.id ? { ...s, isVisible: nextState } : s));
+        await publishUpdate({
+          section: 'Contact / Sosial',
+          sectionKey: 'contact',
+          action: 'Update',
+          details: `${soc.name} — ${nextState ? 'ditampilkan' : 'disembunyikan'}`,
+          patch: { socials: nextList }
+        });
       }
     } catch (err) {
       toast.error('Gagal mengubah visibilitas social link: ' + err.message);
@@ -156,11 +172,19 @@ export default function ContactPage() {
       displayOrder: idx + 1
     }));
 
-    setSocials(newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 })));
+    const ordered = newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 }));
+    setSocials(ordered);
 
     try {
       await api.reorderSocials(payload);
       toast.success('Urutan social link berhasil diperbarui.');
+      await publishUpdate({
+        section: 'Contact / Sosial',
+        sectionKey: 'contact',
+        action: 'Update',
+        details: 'Urutan social link',
+        patch: { socials: ordered }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadData();
@@ -181,14 +205,26 @@ export default function ContactPage() {
         if (res.success) {
           toast.success('Social link berhasil diperbarui.');
           setIsSocialModalOpen(false);
-          loadData();
+          await loadData();
+          await publishUpdate({
+            section: 'Contact / Sosial',
+            sectionKey: 'contact',
+            action: 'Update',
+            details: socialFormData.name
+          });
         }
       } else {
         const res = await api.createSocial(socialFormData);
         if (res.success) {
           toast.success('Social link baru berhasil ditambahkan.');
           setIsSocialModalOpen(false);
-          loadData();
+          await loadData();
+          await publishUpdate({
+            section: 'Contact / Sosial',
+            sectionKey: 'contact',
+            action: 'Tambah',
+            details: socialFormData.name
+          });
         }
       }
     } catch (err) {
@@ -205,8 +241,16 @@ export default function ContactPage() {
       const res = await api.deleteSocial(deleteSocialTarget.id);
       if (res.success) {
         toast.success(res.message);
-        setSocials((prev) => prev.filter((s) => s.id !== deleteSocialTarget.id));
+        const remaining = socials.filter((s) => s.id !== deleteSocialTarget.id);
+        setSocials(remaining);
         setDeleteSocialTarget(null);
+        await publishUpdate({
+          section: 'Contact / Sosial',
+          sectionKey: 'contact',
+          action: 'Hapus',
+          details: deleteSocialTarget.name,
+          patch: { socials: remaining }
+        });
       }
     } catch (err) {
       toast.error('Gagal menghapus social link: ' + err.message);

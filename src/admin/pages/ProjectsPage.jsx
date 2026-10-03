@@ -33,6 +33,7 @@ import { usePortfolioData } from '../../context/PortfolioDataContext';
 
 export default function ProjectsPage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [projects, setProjects] = useState([]);
@@ -227,10 +228,16 @@ export default function ProjectsPage() {
     try {
       const res = await api.toggleProjectVisibility(item.id, nextState);
       if (res.success) {
-        setProjects((prev) =>
-          prev.map((p) => (p.id === item.id ? { ...p, isVisible: nextState } : p))
-        );
+        const nextList = projects.map((p) => (p.id === item.id ? { ...p, isVisible: nextState } : p));
+        setProjects(nextList);
         toast.success(res.message);
+        await publishUpdate({
+          section: 'Projects',
+          sectionKey: 'projects',
+          action: 'Update',
+          details: `${item.title} — ${nextState ? 'ditampilkan' : 'disembunyikan'}`,
+          patch: { projects: nextList }
+        });
       }
     } catch (err) {
       toast.error('Gagal mengubah visibilitas: ' + err.message);
@@ -251,11 +258,19 @@ export default function ProjectsPage() {
       displayOrder: idx + 1
     }));
 
-    setProjects(newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 })));
+    const ordered = newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 }));
+    setProjects(ordered);
 
     try {
       await api.reorderProjects(payload);
       toast.success('Urutan project berhasil diperbarui.');
+      await publishUpdate({
+        section: 'Projects',
+        sectionKey: 'projects',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { projects: ordered }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadProjects();
@@ -335,14 +350,26 @@ export default function ProjectsPage() {
         if (res.success) {
           toast.success('Project berhasil diperbarui.');
           setIsFormOpen(false);
-          loadProjects();
+          await loadProjects();
+          await publishUpdate({
+            section: 'Projects',
+            sectionKey: 'projects',
+            action: 'Update',
+            details: payload.title
+          });
         }
       } else {
         const res = await api.createProject(payload);
         if (res.success) {
           toast.success('Project baru berhasil ditambahkan.');
           setIsFormOpen(false);
-          loadProjects();
+          await loadProjects();
+          await publishUpdate({
+            section: 'Projects',
+            sectionKey: 'projects',
+            action: 'Tambah',
+            details: payload.title
+          });
         }
       }
     } catch (err) {
@@ -359,8 +386,16 @@ export default function ProjectsPage() {
       const res = await api.deleteProject(deleteTarget.id);
       if (res.success) {
         toast.success(res.message);
-        setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+        const remaining = projects.filter((p) => p.id !== deleteTarget.id);
+        setProjects(remaining);
         setDeleteTarget(null);
+        await publishUpdate({
+          section: 'Projects',
+          sectionKey: 'projects',
+          action: 'Hapus',
+          details: deleteTarget.title,
+          patch: { projects: remaining }
+        });
       }
     } catch (err) {
       toast.error('Gagal menghapus project: ' + err.message);

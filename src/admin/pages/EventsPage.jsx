@@ -28,7 +28,7 @@ import {
 
 export default function EventsPage() {
   const toast = useToast();
-  const portfolioData = usePortfolioData();
+  const { publishUpdate } = usePortfolioData();
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,7 +228,13 @@ export default function EventsPage() {
         );
         setEvents(updatedList);
         syncCache(updatedList);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Event & Kegiatan',
+          sectionKey: 'events',
+          action: 'Update',
+          details: formData.title,
+          patch: { events: updatedList }
+        });
         setIsFormOpen(false);
       } else {
         const res = await api.createEvent(formData).catch(() => null);
@@ -241,7 +247,13 @@ export default function EventsPage() {
         const newList = [...events, newItem];
         setEvents(newList);
         syncCache(newList);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Event & Kegiatan',
+          sectionKey: 'events',
+          action: 'Tambah',
+          details: formData.title,
+          patch: { events: newList }
+        });
         setIsFormOpen(false);
       }
       loadEvents();
@@ -262,7 +274,13 @@ export default function EventsPage() {
       setEvents(updatedList);
       syncCache(updatedList);
       toast.success(`Event ${newStatus ? 'ditampilkan' : 'disembunyikan'}.`);
-      if (portfolioData?.refreshData) portfolioData.refreshData();
+      await publishUpdate({
+        section: 'Event & Kegiatan',
+        sectionKey: 'events',
+        action: 'Update',
+        details: `${item.title} — ${newStatus ? 'ditampilkan' : 'disembunyikan'}`,
+        patch: { events: updatedList }
+      });
     } catch (err) {
       toast.error('Gagal mengubah status: ' + err.message);
     }
@@ -289,7 +307,13 @@ export default function EventsPage() {
     try {
       await api.reorderEvents(payload);
       toast.success('Urutan event berhasil diperbarui.');
-      if (portfolioData?.refreshData) portfolioData.refreshData();
+      await publishUpdate({
+        section: 'Event & Kegiatan',
+        sectionKey: 'events',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { events: finalItems }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadEvents();
@@ -306,7 +330,13 @@ export default function EventsPage() {
         const remaining = events.filter((e) => e.id !== deleteTarget.id);
         setEvents(remaining);
         syncCache(remaining);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Event & Kegiatan',
+          sectionKey: 'events',
+          action: 'Hapus',
+          details: deleteTarget.title,
+          patch: { events: remaining }
+        });
         setDeleteTarget(null);
         await loadEvents();
       } else {

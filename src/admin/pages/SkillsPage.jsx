@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 import {
   Layers,
   Plus,
@@ -19,6 +20,7 @@ import {
 
 export default function SkillsPage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [skills, setSkills] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -90,10 +92,16 @@ export default function SkillsPage() {
     try {
       const res = await api.toggleSkillVisibility(item.id, nextState);
       if (res.success) {
-        setSkills((prev) =>
-          prev.map((s) => (s.id === item.id ? { ...s, isVisible: nextState } : s))
-        );
+        const nextList = skills.map((s) => (s.id === item.id ? { ...s, isVisible: nextState } : s));
+        setSkills(nextList);
         toast.success(res.message);
+        await publishUpdate({
+          section: 'Skills / Fitur',
+          sectionKey: 'skills',
+          action: 'Update',
+          details: `${item.title} — ${nextState ? 'ditampilkan' : 'disembunyikan'}`,
+          patch: { skills: nextList }
+        });
       }
     } catch (err) {
       toast.error('Gagal mengubah visibilitas: ' + err.message);
@@ -114,11 +122,19 @@ export default function SkillsPage() {
       displayOrder: idx + 1
     }));
 
-    setSkills(newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 })));
+    const ordered = newItems.map((item, idx) => ({ ...item, displayOrder: idx + 1 }));
+    setSkills(ordered);
 
     try {
       await api.reorderSkills(payload);
       toast.success('Urutan skills berhasil diperbarui.');
+      await publishUpdate({
+        section: 'Skills / Fitur',
+        sectionKey: 'skills',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { skills: ordered }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadSkills();
@@ -149,14 +165,26 @@ export default function SkillsPage() {
         if (res.success) {
           toast.success('Skill berhasil diperbarui.');
           setIsFormOpen(false);
-          loadSkills();
+          await loadSkills();
+          await publishUpdate({
+            section: 'Skills / Fitur',
+            sectionKey: 'skills',
+            action: 'Update',
+            details: payload.title
+          });
         }
       } else {
         const res = await api.createSkill(payload);
         if (res.success) {
           toast.success('Skill baru berhasil ditambahkan.');
           setIsFormOpen(false);
-          loadSkills();
+          await loadSkills();
+          await publishUpdate({
+            section: 'Skills / Fitur',
+            sectionKey: 'skills',
+            action: 'Tambah',
+            details: payload.title
+          });
         }
       }
     } catch (err) {
@@ -173,8 +201,16 @@ export default function SkillsPage() {
       const res = await api.deleteSkill(deleteTarget.id);
       if (res.success) {
         toast.success(res.message);
-        setSkills((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+        const remaining = skills.filter((s) => s.id !== deleteTarget.id);
+        setSkills(remaining);
         setDeleteTarget(null);
+        await publishUpdate({
+          section: 'Skills / Fitur',
+          sectionKey: 'skills',
+          action: 'Hapus',
+          details: deleteTarget.title,
+          patch: { skills: remaining }
+        });
       }
     } catch (err) {
       toast.error('Gagal menghapus skill: ' + err.message);

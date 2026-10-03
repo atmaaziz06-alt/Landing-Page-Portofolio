@@ -29,7 +29,7 @@ import {
 
 export default function CertificationsPage() {
   const toast = useToast();
-  const portfolioData = usePortfolioData();
+  const { publishUpdate } = usePortfolioData();
 
   const [certifications, setCertifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,7 +146,12 @@ export default function CertificationsPage() {
 
     toast.success(`Kategori "${catToDelete}" berhasil dihapus.`);
     await loadCertifications();
-    if (portfolioData?.refreshData) portfolioData.refreshData();
+    await publishUpdate({
+      section: 'Sertifikasi',
+      sectionKey: 'certifications',
+      action: 'Update',
+      details: `Kategori "${catToDelete}" dihapus`
+    });
   };
 
   // Helper to optimize and convert certificate image to crisp Data URL
@@ -319,7 +324,13 @@ export default function CertificationsPage() {
         );
         setCertifications(updatedList);
         syncCache(updatedList);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Sertifikasi',
+          sectionKey: 'certifications',
+          action: 'Update',
+          details: formData.title,
+          patch: { certifications: updatedList }
+        });
         setIsFormOpen(false);
       } else {
         const res = await api.createCertification(formData).catch(() => null);
@@ -332,7 +343,13 @@ export default function CertificationsPage() {
         const newList = [...certifications, newItem];
         setCertifications(newList);
         syncCache(newList);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Sertifikasi',
+          sectionKey: 'certifications',
+          action: 'Tambah',
+          details: formData.title,
+          patch: { certifications: newList }
+        });
         setIsFormOpen(false);
       }
       loadCertifications();
@@ -353,7 +370,13 @@ export default function CertificationsPage() {
       setCertifications(updatedList);
       syncCache(updatedList);
       toast.success(`Sertifikasi ${newStatus ? 'ditampilkan' : 'disembunyikan'}.`);
-      if (portfolioData?.refreshData) portfolioData.refreshData();
+      await publishUpdate({
+        section: 'Sertifikasi',
+        sectionKey: 'certifications',
+        action: 'Update',
+        details: `${item.title} — ${newStatus ? 'ditampilkan' : 'disembunyikan'}`,
+        patch: { certifications: updatedList }
+      });
     } catch (err) {
       toast.error('Gagal mengubah status: ' + err.message);
     }
@@ -380,7 +403,13 @@ export default function CertificationsPage() {
     try {
       await api.reorderCertifications(payload);
       toast.success('Urutan sertifikasi berhasil diperbarui.');
-      if (portfolioData?.refreshData) portfolioData.refreshData();
+      await publishUpdate({
+        section: 'Sertifikasi',
+        sectionKey: 'certifications',
+        action: 'Update',
+        details: 'Urutan tampilan',
+        patch: { certifications: finalItems }
+      });
     } catch (err) {
       toast.error('Gagal memperbarui urutan: ' + err.message);
       loadCertifications();
@@ -397,7 +426,13 @@ export default function CertificationsPage() {
         const remaining = certifications.filter((c) => c.id !== deleteTarget.id);
         setCertifications(remaining);
         syncCache(remaining);
-        if (portfolioData?.refreshData) portfolioData.refreshData();
+        await publishUpdate({
+          section: 'Sertifikasi',
+          sectionKey: 'certifications',
+          action: 'Hapus',
+          details: deleteTarget.title,
+          patch: { certifications: remaining }
+        });
         setDeleteTarget(null);
         await loadCertifications();
       } else {

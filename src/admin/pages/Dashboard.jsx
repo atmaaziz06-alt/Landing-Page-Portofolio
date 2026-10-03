@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { formatUpdateTime, readHistory, subscribeContentUpdates } from '../../utils/contentStore';
 import {
   FolderKanban,
   Briefcase,
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [contentHistory, setContentHistory] = useState(() => readHistory());
 
   const fetchStats = async () => {
     try {
@@ -40,6 +42,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    return subscribeContentUpdates(() => {
+      setContentHistory(readHistory());
+    });
   }, []);
 
   const handleRefresh = () => {
@@ -60,7 +68,6 @@ export default function Dashboard() {
   const eStats = stats?.experience || { total: 0, visible: 0, hidden: 0 };
   const tStats = stats?.tools || { total: 0, visible: 0, hidden: 0 };
   const sStats = stats?.skills || { total: 0 };
-  const activity = stats?.recentActivity || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -237,41 +244,66 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* RECENT ACTIVITY LOG */}
+      {/* HISTORI UPDATE */}
       <div className="rounded-[28px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-6 sm:p-7 shadow-xs">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-5 gap-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#E66F52]" />
-            <h2 className="text-base font-semibold text-[#171717]">Recent Updates & Activity</h2>
+            <h2 className="text-base font-semibold text-[#171717]">Histori Update</h2>
           </div>
-          <span className="text-xs text-[#5F5A57]">10 Aktivitas Terakhir</span>
+          <Link
+            to="/admin/history"
+            className="text-xs font-medium text-[#E66F52] hover:underline inline-flex items-center gap-1"
+          >
+            Lihat semua
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        {activity.length === 0 ? (
+        {contentHistory.length === 0 ? (
           <p className="text-xs sm:text-sm text-[#5F5A57] italic py-4 text-center">
-            Belum ada aktivitas yang tercatat.
+            Belum ada histori update. Perubahan yang disimpan dari halaman admin akan muncul di sini.
           </p>
         ) : (
-          <div className="divide-y divide-[rgba(23,23,23,0.06)]">
-            {activity.map((item) => (
-              <div key={item.id} className="py-3 flex items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
-                <div className="flex items-start sm:items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-[#E66F52] mt-1.5 sm:mt-0 flex-shrink-0" />
-                  <div>
-                    <span className="font-semibold text-[#171717]">{item.action}</span>
-                    {item.details && (
-                      <span className="text-[#5F5A57] ml-1.5">— {item.details}</span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-[11px] text-[#5F5A57] whitespace-nowrap">
-                  {new Date(item.timestamp).toLocaleString('id-ID', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short'
-                  })}
-                </span>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider text-[#5F5A57] border-b border-[rgba(23,23,23,0.08)]">
+                  <th className="py-2 pr-3 font-semibold">Waktu Update</th>
+                  <th className="py-2 pr-3 font-semibold">Bagian yang diubah</th>
+                  <th className="py-2 pr-3 font-semibold">Detail</th>
+                  <th className="py-2 font-semibold text-right">Versi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[rgba(23,23,23,0.06)]">
+                {contentHistory.slice(0, 8).map((item, index) => (
+                  <tr key={item.id}>
+                    <td className="py-3 pr-3 whitespace-nowrap text-[#171717] font-medium">
+                      {formatUpdateTime(item.timestamp)}
+                    </td>
+                    <td className="py-3 pr-3">
+                      {item.section || 'Konten'}
+                      {index === 0 && (
+                        <span className="ml-2 text-[10px] font-semibold text-[#E66F52]">Terbaru</span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-3 text-[#5F5A57]">
+                      {item.action}
+                      {item.details ? ` — ${item.details}` : ''}
+                    </td>
+                    <td className="py-3 text-right">
+                      <Link
+                        to="/admin/history"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#E66F52] hover:underline"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Lihat
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -18,7 +18,7 @@ import { usePortfolioData } from '../../context/PortfolioDataContext';
 
 export default function ProfilePage() {
   const toast = useToast();
-  const portfolioData = usePortfolioData();
+  const { publishUpdate } = usePortfolioData();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -169,9 +169,13 @@ export default function ProfilePage() {
       const res = await api.updateProfile(updatedData);
       if (res.success) {
         toast.success(`Foto ${isAvatar ? 'Hero Avatar' : 'About'} berhasil diperbarui & langsung tersimpan!`);
-        if (portfolioData?.refreshData) {
-          portfolioData.refreshData();
-        }
+        await publishUpdate({
+          section: isAvatar ? 'Hero / Gambar avatar' : 'About / Gambar',
+          sectionKey: 'profile',
+          action: 'Update',
+          details: isAvatar ? 'Foto hero avatar' : 'Foto halaman About',
+          patch: { profile: updatedData }
+        });
       }
     } catch (err) {
       console.warn('Auto-save error:', err);
@@ -205,9 +209,13 @@ export default function ProfilePage() {
       const res = await api.updateProfile(formData);
       if (res.success) {
         toast.success('Profil & foto berhasil diperbarui dan tersimpan di database!');
-        if (portfolioData?.refreshData) {
-          portfolioData.refreshData();
-        }
+        await publishUpdate({
+          section: 'Hero / Profil',
+          sectionKey: 'profile',
+          action: 'Update',
+          details: formData.name || 'Identitas & headline',
+          patch: { profile: formData }
+        });
       }
     } catch (err) {
       toast.error('Gagal memperbarui profil: ' + err.message);

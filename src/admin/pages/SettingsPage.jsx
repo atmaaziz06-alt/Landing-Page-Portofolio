@@ -1,7 +1,7 @@
 // src/admin/pages/SettingsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { useToast } from '../../context/ToastContext';
+import { usePortfolioData } from '../../context/PortfolioDataContext';
 import {
   Settings,
   Lock,
@@ -17,6 +17,7 @@ import {
 
 export default function SettingsPage() {
   const toast = useToast();
+  const { publishUpdate } = usePortfolioData();
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isChangingPass, setIsChangingPass] = useState(false);
@@ -72,6 +73,13 @@ export default function SettingsPage() {
       const res = await api.updateSettings(settingsData);
       if (res.success) {
         toast.success('Pengaturan situs & SEO berhasil diperbarui!');
+        await publishUpdate({
+          section: 'Site Settings',
+          sectionKey: 'settings',
+          action: 'Update',
+          details: settingsData.siteTitle || 'SEO & footer',
+          patch: { settings: settingsData }
+        });
       }
     } catch (err) {
       toast.error('Gagal memperbarui pengaturan: ' + err.message);

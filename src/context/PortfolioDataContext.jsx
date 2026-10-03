@@ -1,11 +1,18 @@
 // src/context/PortfolioDataContext.jsx
-// Seamless data provider for the Public Landing Page
-// Syncs with the Database / CMS with instant fallback to existing data
+// Public landing data is sourced from Histori Update (latest entry) in LocalStorage.
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
+import {
+  getPublishedContent,
+  subscribeContentUpdates,
+  visibleOnly,
+  recordContentUpdate,
+  readHistory,
+  readSnapshot
+} from '../utils/contentStore';
+import { collectPublicSnapshot, publishContentUpdate } from '../utils/publishContent';
 
-// Existing local fallbacks
 import { profileData as fallbackProfile } from '../data/profile';
 import { projects as fallbackProjects } from '../data/projects';
 import { experienceData as fallbackExperience } from '../data/experience';
@@ -15,180 +22,203 @@ import { fallbackEvents } from '../data/events';
 
 const PortfolioDataContext = createContext(null);
 
+let publicHydrateLock = null;
+
+const defaultContact = {
+  ctaTitle: "Have a project in mind? Let's create something iconic.",
+  ctaDescription: "Currently accepting selected freelance and contract design projects. Available for creative direction, visual brand identity, and modern digital web experiences.",
+  email: fallbackProfile.contact?.email || 'atmaaziz06@gmail.com',
+  phone: fallbackProfile.contact?.phone || '+62-877-6279-8586',
+  whatsapp: fallbackProfile.contact?.whatsapp || '6287762798586',
+  primaryBtnText: 'Start a conversation',
+  primaryBtnLink: '#contact',
+  secondaryBtnText: 'Email me directly',
+  secondaryBtnLink: `mailto:${fallbackProfile.contact?.email || 'atmaaziz06@gmail.com'}`
+};
+
+const defaultSettings = {
+  siteTitle: 'Raditya Atma Aziz — Graphic Design & Web Designer',
+  brandName: fallbackProfile.brandName || 'Vezta Studio',
+  footerBrand: fallbackProfile.brandName || 'Vezta Studio',
+  footerCopyright: `${fallbackProfile.brandName || 'Vezta Studio'}. All rights reserved.`,
+  footerNote: 'Designed & built with intention.'
+};
+
+function mergeProfile(base, extra) {
+  if (!extra) return base;
+  return {
+    ...base,
+    ...extra,
+    availability: {
+      ...(base.availability || {}),
+      ...(extra.availability || {})
+    }
+  };
+}
+
+function readLegacyOverride() {
+  try {
+    const stored = localStorage.getItem('vezta_profile_override');
+    return stored ? JSON.parse(stored) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeFromSnapshot(snapshot) {
+  const published = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  const override = readLegacyOverride();
+
+  return {
+    profile: mergeProfile(fallbackProfile, {
+      ...(published.profile || {}),
+      ...(override?.avatarUrl ? { avatarUrl: override.avatarUrl } : {}),
+      ...(override?.aboutImageUrl ? { aboutImageUrl: override.aboutImageUrl } : {})
+    }),
+    projects: Array.isArray(published.projects) && published.projects.length
+      ? visibleOnly(published.projects)
+      : fallbackProjects,
+    experience: Array.isArray(published.experience) && published.experience.length
+      ? visibleOnly(published.experience)
+      : fallbackExperience,
+    skills: Array.isArray(published.skills) && published.skills.length
+      ? visibleOnly(published.skills)
+      : fallbackServices,
+    tools: Array.isArray(published.tools) ? visibleOnly(published.tools) : [],
+    events: Array.isArray(published.events)
+      ? visibleOnly(published.events)
+      : fallbackEvents,
+    certifications: Array.isArray(published.certifications)
+      ? visibleOnly(published.certifications)
+      : fallbackCertifications,
+    contact: published.contact ? { ...defaultContact, ...published.contact } : defaultContact,
+    socials: Array.isArray(published.socials) && published.socials.length
+      ? visibleOnly(published.socials)
+      : (fallbackProfile.contact?.socials || []),
+    settings: published.settings ? { ...defaultSettings, ...published.settings } : defaultSettings
+  };
+}
+
+function getInitialPublicState() {
+  if (typeof window === 'undefined') {
+    return normalizeFromSnapshot(null);
+  }
+  return normalizeFromSnapshot(getPublishedContent());
+}
+
 export function PortfolioDataProvider({ children }) {
-  const [profile, setProfile] = useState(() => {
-    try {
-      const stored = localStorage.getItem('vezta_profile_override');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return {
-          ...fallbackProfile,
-          ...(parsed.avatarUrl ? { avatarUrl: parsed.avatarUrl } : {}),
-          ...(parsed.aboutImageUrl ? { aboutImageUrl: parsed.aboutImageUrl } : {})
-        };
-      }
-    } catch (_) {}
-    return fallbackProfile;
-  });
-  const [projects, setProjects] = useState(fallbackProjects);
-  const [experience, setExperience] = useState(fallbackExperience);
-  const [skills, setSkills] = useState(fallbackServices);
-  const [tools, setTools] = useState([]);
-  const [events, setEvents] = useState(() => {
-    try {
-      const stored = localStorage.getItem('vezta_events_cache');
-      if (stored !== null) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter((item) => item && item.isVisible !== false);
-        }
-      }
-    } catch (_) {}
-    return fallbackEvents;
-  });
-  const [certifications, setCertifications] = useState(() => {
-    try {
-      const stored = localStorage.getItem('vezta_certifications_cache');
-      if (stored !== null) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter((item) => item && item.isVisible !== false);
-        }
-      }
-    } catch (_) {}
-    return fallbackCertifications;
-  });
-  const [contact, setContact] = useState({
-    ctaTitle: "Have a project in mind? Let's create something iconic.",
-    ctaDescription: "Currently accepting selected freelance and contract design projects. Available for creative direction, visual brand identity, and modern digital web experiences.",
-    email: fallbackProfile.contact?.email || "atmaaziz06@gmail.com",
-    phone: fallbackProfile.contact?.phone || "+62-877-6279-8586",
-    whatsapp: fallbackProfile.contact?.whatsapp || "6287762798586",
-    primaryBtnText: "Start a conversation",
-    primaryBtnLink: "#contact",
-    secondaryBtnText: "Email me directly",
-    secondaryBtnLink: `mailto:${fallbackProfile.contact?.email || 'atmaaziz06@gmail.com'}`
-  });
-  const [socials, setSocials] = useState(fallbackProfile.contact?.socials || []);
-  const [settings, setSettings] = useState({
-    siteTitle: "Raditya Atma Aziz — Graphic Design & Web Designer",
-    brandName: fallbackProfile.brandName || "Vezta Studio",
-    footerBrand: fallbackProfile.brandName || "Vezta Studio",
-    footerCopyright: `${fallbackProfile.brandName || 'Vezta Studio'}. All rights reserved.`,
-    footerNote: "Designed & built with intention."
-  });
+  const initial = getInitialPublicState();
+  const [profile, setProfile] = useState(initial.profile);
+  const [projects, setProjects] = useState(initial.projects);
+  const [experience, setExperience] = useState(initial.experience);
+  const [skills, setSkills] = useState(initial.skills);
+  const [tools, setTools] = useState(initial.tools);
+  const [events, setEvents] = useState(initial.events);
+  const [certifications, setCertifications] = useState(initial.certifications);
+  const [contact, setContact] = useState(initial.contact);
+  const [socials, setSocials] = useState(initial.socials);
+  const [settings, setSettings] = useState(initial.settings);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPublicData = useCallback(async () => {
+  const applyPublishedContent = useCallback((snapshot) => {
+    const next = normalizeFromSnapshot(snapshot);
+    setProfile(next.profile);
+    setProjects(next.projects);
+    setExperience(next.experience);
+    setSkills(next.skills);
+    setTools(next.tools);
+    setEvents(next.events);
+    setCertifications(next.certifications);
+    setContact(next.contact);
+    setSocials(next.socials);
+    setSettings(next.settings);
+
+    if (next.settings?.siteTitle) {
+      document.title = next.settings.siteTitle;
+    }
+
     try {
-      // 1. Profile
-      const pRes = await api.getProfile().catch(() => null);
-      let localOverride = null;
-      try {
-        const stored = localStorage.getItem('vezta_profile_override');
-        if (stored) localOverride = JSON.parse(stored);
-      } catch (_) {}
-
-      if (pRes?.success && pRes.data) {
-        setProfile((prev) => ({
-          ...prev,
-          name: pRes.data.name || prev.name,
-          role: pRes.data.role || prev.role,
-          brandName: pRes.data.brandName || prev.brandName,
-          monogram: pRes.data.monogram || prev.monogram,
-          eyebrow: pRes.data.eyebrow || prev.eyebrow,
-          location: pRes.data.location || prev.location,
-          headlinePrefix: pRes.data.headlinePrefix || prev.headlinePrefix,
-          description: pRes.data.description || prev.description,
-          bio: pRes.data.bio || prev.bio,
-          avatarUrl: localOverride?.avatarUrl || pRes.data.avatarUrl || prev.avatarUrl,
-          aboutImageUrl: localOverride?.aboutImageUrl || pRes.data.aboutImageUrl || prev.aboutImageUrl,
-          availability: {
-            ...prev.availability,
-            ...(pRes.data.availability || {})
-          }
-        }));
-      } else if (localOverride) {
-        setProfile((prev) => ({
-          ...prev,
-          avatarUrl: localOverride.avatarUrl || prev.avatarUrl,
-          aboutImageUrl: localOverride.aboutImageUrl || prev.aboutImageUrl
-        }));
+      if (Array.isArray(next.events)) {
+        localStorage.setItem('vezta_events_cache', JSON.stringify(next.events));
       }
-
-      // 2. Projects (only visible)
-      const projRes = await api.getProjects(false).catch(() => null);
-      if (projRes?.success && Array.isArray(projRes.data) && projRes.data.length > 0) {
-        setProjects(projRes.data);
+      if (Array.isArray(next.certifications)) {
+        localStorage.setItem('vezta_certifications_cache', JSON.stringify(next.certifications));
       }
+    } catch (_) {}
+  }, []);
 
-      // 3. Experience (only visible)
-      const expRes = await api.getExperience(false).catch(() => null);
-      if (expRes?.success && Array.isArray(expRes.data) && expRes.data.length > 0) {
-        setExperience(expRes.data);
-      }
+  const hydrateFromStorage = useCallback(() => {
+    applyPublishedContent(getPublishedContent());
+  }, [applyPublishedContent]);
 
-      // 4. Tools (only visible)
-      const toolsRes = await api.getTools(false).catch(() => null);
-      if (toolsRes?.success && Array.isArray(toolsRes.data)) {
-        setTools(toolsRes.data);
-      }
+  const fetchPublicData = useCallback(async () => {
+    const stored = getPublishedContent();
+    if (stored) {
+      applyPublishedContent(stored);
+      setIsLoading(false);
+      return;
+    }
 
-      // 5. Skills (only visible)
-      const skillsRes = await api.getSkills(false).catch(() => null);
-      if (skillsRes?.success && Array.isArray(skillsRes.data) && skillsRes.data.length > 0) {
-        setSkills(skillsRes.data);
-      }
-
-      // 6. Contact & Socials
-      const cRes = await api.getContact(false).catch(() => null);
-      if (cRes?.success && cRes.data) {
-        if (cRes.data.contact) {
-          setContact(cRes.data.contact);
+    if (!publicHydrateLock) {
+      publicHydrateLock = (async () => {
+        const collected = await collectPublicSnapshot({});
+        const stamped = { ...collected, updatedAt: new Date().toISOString() };
+        if (!getPublishedContent()) {
+          recordContentUpdate({
+            section: 'Konten',
+            action: 'Inisialisasi',
+            details: 'Snapshot awal landing page',
+            snapshot: stamped
+          });
         }
-        if (Array.isArray(cRes.data.socials) && cRes.data.socials.length > 0) {
-          setSocials(cRes.data.socials);
-        }
-      }
+        return getPublishedContent() || stamped;
+      })().finally(() => {
+        publicHydrateLock = null;
+      });
+    }
 
-      // 7. Site Settings
-      const setRes = await api.getSettings().catch(() => null);
-      if (setRes?.success && setRes.data) {
-        setSettings(setRes.data);
-        if (setRes.data.siteTitle) {
-          document.title = setRes.data.siteTitle;
-        }
-      }
-
-      // 8. Events & Kegiatan (only visible)
-      const evRes = await api.getEvents(false).catch(() => null);
-      if (evRes?.success && Array.isArray(evRes.data)) {
-        const visibleEvents = evRes.data.filter((e) => e && e.isVisible !== false);
-        setEvents(visibleEvents);
-        try {
-          localStorage.setItem('vezta_events_cache', JSON.stringify(visibleEvents));
-        } catch (_) {}
-      }
-
-      // 9. Certifications (only visible)
-      const certRes = await api.getCertifications(false).catch(() => null);
-      if (certRes?.success && Array.isArray(certRes.data)) {
-        const visibleCerts = certRes.data.filter((c) => c && c.isVisible !== false);
-        setCertifications(visibleCerts);
-        try {
-          localStorage.setItem('vezta_certifications_cache', JSON.stringify(visibleCerts));
-        } catch (_) {}
-      }
+    try {
+      const snapshot = await publicHydrateLock;
+      applyPublishedContent(snapshot);
     } catch (err) {
-      console.warn('Could not sync public data from API, using fallback:', err);
+      console.warn('Could not sync public data from API, using stored/fallback:', err);
+      try {
+        const pRes = await api.getProfile().catch(() => null);
+        if (pRes?.success && pRes.data) {
+          setProfile((prev) => mergeProfile(prev, pRes.data));
+        }
+      } catch (_) {}
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [applyPublishedContent]);
+
+  const publishUpdate = useCallback(async (meta) => {
+    const entry = await publishContentUpdate(meta);
+    applyPublishedContent(getPublishedContent());
+    return entry;
+  }, [applyPublishedContent]);
 
   useEffect(() => {
+    if (readHistory().length === 0) {
+      const existing = readSnapshot();
+      if (existing && typeof existing === 'object') {
+        recordContentUpdate({
+          section: 'Konten',
+          action: 'Inisialisasi',
+          details: 'Dipulihkan dari penyimpanan lokal',
+          snapshot: existing
+        });
+      }
+    }
     fetchPublicData();
   }, [fetchPublicData]);
+
+  useEffect(() => {
+    return subscribeContentUpdates(() => {
+      hydrateFromStorage();
+    });
+  }, [hydrateFromStorage]);
 
   const value = {
     profile,
@@ -202,7 +232,9 @@ export function PortfolioDataProvider({ children }) {
     socials,
     settings,
     isLoading,
-    refreshData: fetchPublicData
+    refreshData: fetchPublicData,
+    hydrateFromStorage,
+    publishUpdate
   };
 
   return (
@@ -223,11 +255,13 @@ export function usePortfolioData() {
       tools: [],
       events: fallbackEvents,
       certifications: fallbackCertifications,
-      contact: {},
-      socials: [],
-      settings: {},
+      contact: defaultContact,
+      socials: fallbackProfile.contact?.socials || [],
+      settings: defaultSettings,
       isLoading: false,
-      refreshData: async () => {}
+      refreshData: async () => {},
+      hydrateFromStorage: () => {},
+      publishUpdate: async () => null
     };
   }
   return context;

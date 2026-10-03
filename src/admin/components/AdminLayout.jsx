@@ -19,7 +19,8 @@ import {
   Sparkles,
   ShieldCheck,
   Calendar,
-  Award
+  Award,
+  History
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -41,6 +42,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Histori Update', path: '/admin/history', icon: History },
     { label: 'Profile', path: '/admin/profile', icon: User },
     { label: 'Experience', path: '/admin/experience', icon: Briefcase },
     { label: 'Projects', path: '/admin/projects', icon: FolderKanban },
