@@ -53,13 +53,38 @@ const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '');
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const useSupabase = Boolean(process.env.VERCEL);
 
+function validateSupabaseUrl() {
+  if (!supabaseUrl) return 'Set SUPABASE_URL to the Supabase Project URL in Vercel.';
+  try {
+    const parsed = new URL(supabaseUrl);
+    if (
+      parsed.protocol !== 'https:' ||
+      parsed.pathname !== '/' ||
+      parsed.search ||
+      parsed.hash ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return 'SUPABASE_URL must be the HTTPS Supabase Project URL (for example, https://<project-ref>.supabase.co), not a dashboard URL or database connection string.';
+    }
+  } catch (_) {
+    return 'SUPABASE_URL is not a valid URL. Use the HTTPS Project URL shown in Supabase project settings.';
+  }
+  return null;
+}
+
 async function callSupabaseRpc(functionName, parameters) {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Supabase persistence is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  const urlError = validateSupabaseUrl();
+  if (urlError) {
+    throw new Error(urlError);
+  }
+  if (!supabaseServiceRoleKey) {
+    throw new Error('Set SUPABASE_SERVICE_ROLE_KEY to the Supabase service_role key in Vercel.');
   }
 
   const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(10000),
     headers: {
       apikey: supabaseServiceRoleKey,
       Authorization: `Bearer ${supabaseServiceRoleKey}`,
@@ -79,6 +104,7 @@ async function callSupabaseRpc(functionName, parameters) {
 
 function describeSupabaseFailure(error) {
   const code = error?.code;
+  const causeCode = error?.cause?.code;
   if (error?.status === 401 || error?.status === 403) {
     return 'Supabase rejected the server key. Verify SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in this Vercel environment.';
   }
@@ -88,8 +114,17 @@ function describeSupabaseFailure(error) {
   if (code === '42P01' || /relation .* does not exist/i.test(error?.message || '')) {
     return 'Supabase CMS tables are missing. Apply the complete CMS migration.';
   }
+  if (error?.name === 'TimeoutError' || causeCode === 'ETIMEDOUT') {
+    return 'Connection to Supabase timed out. Verify the Supabase project is active and reachable from Vercel.';
+  }
+  if (causeCode === 'ENOTFOUND' || causeCode === 'EAI_AGAIN') {
+    return 'The hostname in SUPABASE_URL could not be resolved. Copy the HTTPS Project URL from Supabase settings; do not use a dashboard or database connection URL.';
+  }
+  if (causeCode === 'ECONNREFUSED' || causeCode === 'ECONNRESET') {
+    return 'The Supabase endpoint refused or reset the connection. Verify SUPABASE_URL and that the Supabase project is active.';
+  }
   if (error?.name === 'TypeError' || /fetch failed|ENOTFOUND|ECONNREFUSED|Invalid URL/i.test(error?.message || '')) {
-    return 'Supabase could not be reached. Check SUPABASE_URL and the project network status.';
+    return 'Supabase could not be reached. Verify that SUPABASE_URL is the HTTPS Project URL from Supabase settings and that the project is active.';
   }
   return 'Supabase initialization failed. Check the Vercel function logs for the database error and verify the CMS migration.';
 }
@@ -151,10 +186,11 @@ export let databaseStatus = {
 export async function initDB() {
   if (!nativeDb) {
     if (useSupabase) {
-      if (!supabaseUrl || !supabaseServiceRoleKey) {
+      const urlError = validateSupabaseUrl();
+      if (urlError || !supabaseServiceRoleKey) {
         databaseStatus = {
           ready: false,
-          message: 'Durable CMS storage is unavailable. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+          message: urlError || 'Set SUPABASE_SERVICE_ROLE_KEY to the Supabase service_role key in Vercel.'
         };
         console.error(`[DB] ${databaseStatus.message}`);
         return databaseStatus;
