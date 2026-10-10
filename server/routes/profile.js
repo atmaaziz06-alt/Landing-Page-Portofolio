@@ -33,9 +33,9 @@ function formatProfile(row) {
 }
 
 // GET /api/profile (Public)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM profiles WHERE id = 1').get();
+    const row = await db.prepare('SELECT * FROM profiles WHERE id = 1').get();
     return res.json({ success: true, data: formatProfile(row) });
   } catch (err) {
     console.error('Fetch profile error:', err);
@@ -44,7 +44,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/profile (Protected)
-router.put('/', authenticateToken, (req, res) => {
+router.put('/', authenticateToken, async (req, res) => {
   try {
     const {
       name,
@@ -93,7 +93,7 @@ router.put('/', authenticateToken, (req, res) => {
       WHERE id = 1
     `);
 
-    stmt.run(
+    await stmt.run(
       name,
       brandName || 'Vezta Studio',
       monogram || brandName || 'Vezta Studio',
@@ -112,9 +112,9 @@ router.put('/', authenticateToken, (req, res) => {
       resumeLabel
     );
 
-    logActivity('Profile Updated', `Updated profile information for ${name}`);
+    await logActivity('Profile Updated', `Updated profile information for ${name}`);
 
-    const updated = db.prepare('SELECT * FROM profiles WHERE id = 1').get();
+    const updated = await db.prepare('SELECT * FROM profiles WHERE id = 1').get();
     return res.json({ success: true, message: 'Profile updated successfully', data: formatProfile(updated) });
   } catch (err) {
     console.error('Update profile error:', err);

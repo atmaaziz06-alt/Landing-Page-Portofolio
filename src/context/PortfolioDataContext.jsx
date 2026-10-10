@@ -1,15 +1,13 @@
 // src/context/PortfolioDataContext.jsx
-// Public landing data is sourced from Histori Update (latest entry) in LocalStorage.
+// Public content is always refreshed from the API; browser storage is only a startup cache.
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../services/api';
 import {
   getPublishedContent,
   subscribeContentUpdates,
   visibleOnly,
-  recordContentUpdate,
-  readHistory,
-  readSnapshot
+  cachePublishedContent,
+  broadcastContentUpdate
 } from '../utils/contentStore';
 import { collectPublicSnapshot, publishContentUpdate } from '../utils/publishContent';
 
@@ -21,8 +19,6 @@ import { fallbackCertifications } from '../data/certifications';
 import { fallbackEvents } from '../data/events';
 
 const PortfolioDataContext = createContext(null);
-
-let publicHydrateLock = null;
 
 const defaultContact = {
   ctaTitle: "Have a project in mind? Let's create something iconic.",
@@ -56,32 +52,18 @@ function mergeProfile(base, extra) {
   };
 }
 
-function readLegacyOverride() {
-  try {
-    const stored = localStorage.getItem('vezta_profile_override');
-    return stored ? JSON.parse(stored) : null;
-  } catch (_) {
-    return null;
-  }
-}
-
 function normalizeFromSnapshot(snapshot) {
   const published = snapshot && typeof snapshot === 'object' ? snapshot : {};
-  const override = readLegacyOverride();
 
   return {
-    profile: mergeProfile(fallbackProfile, {
-      ...(published.profile || {}),
-      ...(override?.avatarUrl ? { avatarUrl: override.avatarUrl } : {}),
-      ...(override?.aboutImageUrl ? { aboutImageUrl: override.aboutImageUrl } : {})
-    }),
-    projects: Array.isArray(published.projects) && published.projects.length
+    profile: mergeProfile(fallbackProfile, published.profile || {}),
+    projects: Array.isArray(published.projects)
       ? visibleOnly(published.projects)
       : fallbackProjects,
-    experience: Array.isArray(published.experience) && published.experience.length
+    experience: Array.isArray(published.experience)
       ? visibleOnly(published.experience)
       : fallbackExperience,
-    skills: Array.isArray(published.skills) && published.skills.length
+    skills: Array.isArray(published.skills)
       ? visibleOnly(published.skills)
       : fallbackServices,
     tools: Array.isArray(published.tools) ? visibleOnly(published.tools) : [],
@@ -92,7 +74,7 @@ function normalizeFromSnapshot(snapshot) {
       ? visibleOnly(published.certifications)
       : fallbackCertifications,
     contact: published.contact ? { ...defaultContact, ...published.contact } : defaultContact,
-    socials: Array.isArray(published.socials) && published.socials.length
+    socials: Array.isArray(published.socials)
       ? visibleOnly(published.socials)
       : (fallbackProfile.contact?.socials || []),
     settings: published.settings ? { ...defaultSettings, ...published.settings } : defaultSettings
@@ -104,13 +86,6 @@ function getInitialPublicState() {
     return normalizeFromSnapshot(null);
   }
   const published = getPublishedContent();
-  console.log('[Vezta Sync] landing init', {
-    hasPublished: Boolean(published),
-    updatedAt: published?.updatedAt,
-    profileName: published?.profile?.name,
-    historyLength: readHistory().length,
-    snapshotName: readSnapshot()?.profile?.name
-  });
   return normalizeFromSnapshot(published);
 }
 
@@ -127,14 +102,11 @@ export function PortfolioDataProvider({ children }) {
   const [socials, setSocials] = useState(initial.socials);
   const [settings, setSettings] = useState(initial.settings);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataError, setDataError] = useState(null);
 
   const applyPublishedContent = useCallback((snapshot) => {
     const next = normalizeFromSnapshot(snapshot);
-    console.log('[Vezta Sync] landing apply', {
-      profileName: next.profile?.name,
-      projects: next.projects?.length,
-      updatedAt: snapshot?.updatedAt
-    });
+    cachePublishedContent(snapshot);
     setProfile(next.profile);
     setProjects(next.projects);
     setExperience(next.experience);
@@ -150,97 +122,46 @@ export function PortfolioDataProvider({ children }) {
       document.title = next.settings.siteTitle;
     }
 
-    try {
-      if (Array.isArray(next.events)) {
-        localStorage.setItem('vezta_events_cache', JSON.stringify(next.events));
-      }
-      if (Array.isArray(next.certifications)) {
-        localStorage.setItem('vezta_certifications_cache', JSON.stringify(next.certifications));
-      }
-    } catch (_) {}
   }, []);
 
-  const hydrateFromStorage = useCallback(() => {
-    applyPublishedContent(getPublishedContent());
-  }, [applyPublishedContent]);
-
   const fetchPublicData = useCallback(async () => {
-    const stored = getPublishedContent();
-    if (stored) {
-      applyPublishedContent(stored);
-      setIsLoading(false);
-      return;
-    }
-
-    if (!publicHydrateLock) {
-      publicHydrateLock = (async () => {
-        const collected = await collectPublicSnapshot({});
-        const stamped = { ...collected, updatedAt: new Date().toISOString() };
-        if (!getPublishedContent()) {
-          recordContentUpdate({
-            section: 'Konten',
-            action: 'Inisialisasi',
-            details: 'Snapshot awal landing page',
-            snapshot: stamped
-          });
-        }
-        return getPublishedContent() || stamped;
-      })().finally(() => {
-        publicHydrateLock = null;
-      });
-    }
-
     try {
-      const snapshot = await publicHydrateLock;
+      const snapshot = await collectPublicSnapshot({ showAll: false });
+      snapshot.updatedAt = new Date().toISOString();
       applyPublishedContent(snapshot);
+      setDataError(null);
     } catch (err) {
-      console.warn('Could not sync public data from API, using stored/fallback:', err);
-      try {
-        const pRes = await api.getProfile().catch(() => null);
-        if (pRes?.success && pRes.data) {
-          setProfile((prev) => mergeProfile(prev, pRes.data));
-        }
-      } catch (_) {}
+      console.error('Gagal memuat konten publik dari API:', err);
+      setDataError(err);
     } finally {
       setIsLoading(false);
     }
   }, [applyPublishedContent]);
 
+  const hydrateFromStorage = fetchPublicData;
+
   const publishUpdate = useCallback(async (meta) => {
-    console.log('[Vezta Sync] admin save start', meta);
     const entry = await publishContentUpdate(meta);
-    const published = entry?.snapshot || getPublishedContent();
+    const published = entry.snapshot;
     applyPublishedContent(published);
-    console.log('[Vezta Sync] admin save done', {
-      ok: Boolean(entry),
-      section: entry?.section,
-      profileName: published?.profile?.name,
-      timestamp: entry?.timestamp
+    broadcastContentUpdate({
+      id: entry.id,
+      section: entry.section,
+      action: entry.action,
+      timestamp: entry.timestamp
     });
     return entry;
   }, [applyPublishedContent]);
 
   useEffect(() => {
-    if (readHistory().length === 0) {
-      const existing = readSnapshot();
-      if (existing && typeof existing === 'object') {
-        recordContentUpdate({
-          section: 'Konten',
-          action: 'Inisialisasi',
-          details: 'Dipulihkan dari penyimpanan lokal',
-          snapshot: existing
-        });
-      }
-    }
     fetchPublicData();
   }, [fetchPublicData]);
 
   useEffect(() => {
-    return subscribeContentUpdates((detail) => {
-      console.log('[Vezta Sync] landing received update event', detail);
-      hydrateFromStorage();
+    return subscribeContentUpdates(() => {
+      fetchPublicData();
     });
-  }, [hydrateFromStorage]);
+  }, [fetchPublicData]);
 
   const value = {
     profile,
@@ -254,6 +175,7 @@ export function PortfolioDataProvider({ children }) {
     socials,
     settings,
     isLoading,
+    dataError,
     refreshData: fetchPublicData,
     hydrateFromStorage,
     publishUpdate
@@ -281,6 +203,7 @@ export function usePortfolioData() {
       socials: fallbackProfile.contact?.socials || [],
       settings: defaultSettings,
       isLoading: false,
+      dataError: null,
       refreshData: async () => {},
       hydrateFromStorage: () => {},
       publishUpdate: async () => null

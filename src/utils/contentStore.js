@@ -1,4 +1,4 @@
-// Persistent published content + update history (LocalStorage source of truth)
+// Optional browser cache and cross-tab notifications; the database is authoritative.
 
 export const CONTENT_STORAGE_KEYS = {
   SNAPSHOT: 'vezta_content_snapshot',
@@ -227,6 +227,22 @@ export function getPublishedContent() {
   ]);
   if (published) memoryPublished = published;
   return published;
+}
+
+export function cachePublishedContent(snapshot, { broadcast = false } = {}) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    throw new TypeError('Published content snapshot must be an object.');
+  }
+  memoryPublished = snapshot;
+  const persisted = writeSnapshot(snapshot);
+  if (broadcast) {
+    broadcastContentUpdate({
+      source: 'api',
+      timestamp: snapshot.updatedAt || new Date().toISOString(),
+      persisted
+    });
+  }
+  return persisted;
 }
 
 export function visibleOnly(items) {

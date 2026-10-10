@@ -67,7 +67,8 @@ export const api = {
 
   async getMe() {
     const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      cache: 'no-store'
     });
     return handleResponse(res);
   },
@@ -83,7 +84,7 @@ export const api = {
 
   // Profile
   async getProfile() {
-    const res = await fetch(`${API_BASE}/profile`);
+    const res = await fetch(`${API_BASE}/profile`, { cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -99,12 +100,12 @@ export const api = {
   // Projects
   async getProjects(showAll = false) {
     const url = showAll ? `${API_BASE}/projects?all=true` : `${API_BASE}/projects`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
   async getProject(id) {
-    const res = await fetch(`${API_BASE}/projects/${id}`);
+    const res = await fetch(`${API_BASE}/projects/${id}`, { cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -155,7 +156,7 @@ export const api = {
   // Experience
   async getExperience(showAll = false) {
     const url = showAll ? `${API_BASE}/experience?all=true` : `${API_BASE}/experience`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -206,7 +207,7 @@ export const api = {
   // Tools
   async getTools(showAll = false) {
     const url = showAll ? `${API_BASE}/tools?all=true` : `${API_BASE}/tools`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -257,7 +258,7 @@ export const api = {
   // Skills / Services
   async getSkills(showAll = false) {
     const url = showAll ? `${API_BASE}/skills?all=true` : `${API_BASE}/skills`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -308,7 +309,7 @@ export const api = {
   // Contact & Socials
   async getContact(showAll = false) {
     const url = showAll ? `${API_BASE}/contact?all=true` : `${API_BASE}/contact`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -358,7 +359,7 @@ export const api = {
 
   // Settings
   async getSettings() {
-    const res = await fetch(`${API_BASE}/settings`);
+    const res = await fetch(`${API_BASE}/settings`, { cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -414,12 +415,12 @@ export const api = {
   // Events & Kegiatan
   async getEvents(showAll = false) {
     const url = showAll ? `${API_BASE}/events?all=true` : `${API_BASE}/events`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
   async getEvent(id) {
-    const res = await fetch(`${API_BASE}/events/${id}`);
+    const res = await fetch(`${API_BASE}/events/${id}`, { cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -470,12 +471,12 @@ export const api = {
   // Certifications / Sertifikasi
   async getCertifications(showAll = false) {
     const url = showAll ? `${API_BASE}/certifications?all=true` : `${API_BASE}/certifications`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
+    const res = await fetch(url, { headers: getAuthHeaders(), cache: 'no-store' });
     return handleResponse(res);
   },
 
   async getCertification(id) {
-    const res = await fetch(`${API_BASE}/certifications/${id}`);
+    const res = await fetch(`${API_BASE}/certifications/${id}`, { cache: 'no-store' });
     return handleResponse(res);
   },
 
@@ -526,6 +527,48 @@ export const api = {
   // Stats & Dashboard
   async getStats() {
     const res = await fetch(`${API_BASE}/stats`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store'
+    });
+    return handleResponse(res);
+  },
+
+  async getContentHistory() {
+    const res = await fetch(`${API_BASE}/content-history`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store'
+    });
+    return handleResponse(res);
+  },
+
+  async createContentHistory(entry) {
+    const res = await fetch(`${API_BASE}/content-history`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(entry)
+    });
+    return handleResponse(res);
+  },
+
+  async restoreContentHistory(id) {
+    const res = await fetch(`${API_BASE}/content-history/${encodeURIComponent(id)}/restore`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async deleteContentHistory(id) {
+    const res = await fetch(`${API_BASE}/content-history/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async deleteOldestContentHistory(count) {
+    const res = await fetch(`${API_BASE}/content-history/oldest?count=${encodeURIComponent(count)}`, {
+      method: 'DELETE',
       headers: getAuthHeaders()
     });
     return handleResponse(res);

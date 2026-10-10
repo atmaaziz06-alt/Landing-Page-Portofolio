@@ -34,7 +34,7 @@ function formatExperience(row) {
 }
 
 // GET /api/experience
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -54,9 +54,9 @@ router.get('/', (req, res) => {
 
     let rows;
     if (showAll && isAdmin) {
-      rows = db.prepare('SELECT * FROM experiences ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM experiences ORDER BY display_order ASC, id ASC').all();
     } else {
-      rows = db.prepare('SELECT * FROM experiences WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM experiences WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
     }
 
     return res.json({ success: true, data: rows.map(formatExperience) });
@@ -67,7 +67,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/experience (Protected)
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       period,
@@ -87,7 +87,7 @@ router.post('/', authenticateToken, (req, res) => {
 
     let order = displayOrder;
     if (order === undefined || order === null) {
-      const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM experiences').get()?.maxOrder || 0;
+      const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM experiences').get())?.maxOrder || 0;
       order = maxOrder + 1;
     }
 
@@ -101,7 +101,7 @@ router.post('/', authenticateToken, (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const result = await stmt.run(
       period || '',
       role,
       company,
@@ -113,9 +113,9 @@ router.post('/', authenticateToken, (req, res) => {
       isVisible === false ? 0 : 1
     );
 
-    logActivity('Experience Added', `Added experience "${role} at ${company}"`);
+    await logActivity('Experience Added', `Added experience "${role} at ${company}"`);
 
-    const created = db.prepare('SELECT * FROM experiences WHERE id = ?').get(result.lastInsertRowid);
+    const created = await db.prepare('SELECT * FROM experiences WHERE id = ?').get(result.lastInsertRowid);
     return res.status(201).json({ success: true, message: 'Experience added successfully', data: formatExperience(created) });
   } catch (err) {
     console.error('Create experience error:', err);
@@ -124,10 +124,10 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/experience/:id (Protected)
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare('SELECT * FROM experiences WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM experiences WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Experience not found' });
     }
@@ -167,7 +167,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       period ?? existing.period,
       role,
       company,
@@ -180,9 +180,9 @@ router.put('/:id', authenticateToken, (req, res) => {
       id
     );
 
-    logActivity('Experience Updated', `Updated "${role} at ${company}"`);
+    await logActivity('Experience Updated', `Updated "${role} at ${company}"`);
 
-    const updated = db.prepare('SELECT * FROM experiences WHERE id = ?').get(id);
+    const updated = await db.prepare('SELECT * FROM experiences WHERE id = ?').get(id);
     return res.json({ success: true, message: 'Experience updated successfully', data: formatExperience(updated) });
   } catch (err) {
     console.error('Update experience error:', err);
@@ -191,19 +191,19 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/experience/:id/visibility (Protected)
-router.patch('/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const exp = db.prepare('SELECT id, company, role, is_visible FROM experiences WHERE id = ?').get(id);
+    const exp = await db.prepare('SELECT id, company, role, is_visible FROM experiences WHERE id = ?').get(id);
     if (!exp) {
       return res.status(404).json({ success: false, message: 'Experience not found' });
     }
 
     const newVisibility = req.body.isVisible !== undefined ? (req.body.isVisible ? 1 : 0) : (exp.is_visible ? 0 : 1);
-    db.prepare('UPDATE experiences SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
+    await db.prepare('UPDATE experiences SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
 
     const statusText = newVisibility ? 'Visible' : 'Hidden';
-    logActivity('Experience Visibility Changed', `Experience at "${exp.company}" set to ${statusText}`);
+    await logActivity('Experience Visibility Changed', `Experience at "${exp.company}" set to ${statusText}`);
 
     return res.json({
       success: true,
@@ -217,7 +217,7 @@ router.patch('/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/experience/reorder/batch (Protected)
-router.patch('/reorder/batch', authenticateToken, (req, res) => {
+router.patch('/reorder/batch', authenticateToken, async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {
@@ -227,11 +227,11 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
     const stmt = db.prepare('UPDATE experiences SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     for (const item of items) {
       if (item.id && item.displayOrder !== undefined) {
-        stmt.run(Number(item.displayOrder), item.id);
+        await stmt.run(Number(item.displayOrder), item.id);
       }
     }
 
-    logActivity('Experience Reordered', `Updated display order for ${items.length} items`);
+    await logActivity('Experience Reordered', `Updated display order for ${items.length} items`);
     return res.json({ success: true, message: 'Experience order updated successfully.' });
   } catch (err) {
     console.error('Reorder error:', err);
@@ -240,16 +240,16 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/experience/:id (Protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const exp = db.prepare('SELECT id, company, role FROM experiences WHERE id = ?').get(id);
+    const exp = await db.prepare('SELECT id, company, role FROM experiences WHERE id = ?').get(id);
     if (!exp) {
       return res.status(404).json({ success: false, message: 'Experience not found' });
     }
 
-    db.prepare('DELETE FROM experiences WHERE id = ?').run(id);
-    logActivity('Experience Deleted', `Deleted "${exp.role} at ${exp.company}"`);
+    await db.prepare('DELETE FROM experiences WHERE id = ?').run(id);
+    await logActivity('Experience Deleted', `Deleted "${exp.role} at ${exp.company}"`);
 
     return res.json({ success: true, message: `Experience at "${exp.company}" deleted successfully.` });
   } catch (err) {

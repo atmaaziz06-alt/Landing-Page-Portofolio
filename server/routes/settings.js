@@ -24,9 +24,9 @@ function formatSettings(row) {
 }
 
 // GET /api/settings (Public)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM site_settings WHERE id = 1').get();
+    const row = await db.prepare('SELECT * FROM site_settings WHERE id = 1').get();
     return res.json({ success: true, data: formatSettings(row) });
   } catch (err) {
     console.error('Fetch settings error:', err);
@@ -35,7 +35,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/settings (Protected)
-router.put('/', authenticateToken, (req, res) => {
+router.put('/', authenticateToken, async (req, res) => {
   try {
     const {
       siteTitle,
@@ -66,7 +66,7 @@ router.put('/', authenticateToken, (req, res) => {
       WHERE id = 1
     `);
 
-    stmt.run(
+    await stmt.run(
       siteTitle || 'Raditya Atma Aziz — Portfolio',
       brandName || 'Vezta Studio',
       siteDescription || '',
@@ -79,9 +79,9 @@ router.put('/', authenticateToken, (req, res) => {
       ogImage || '/assets/images/user-portrait.png'
     );
 
-    logActivity('Site Settings Updated', 'Updated site and SEO settings');
+    await logActivity('Site Settings Updated', 'Updated site and SEO settings');
 
-    const updated = db.prepare('SELECT * FROM site_settings WHERE id = 1').get();
+    const updated = await db.prepare('SELECT * FROM site_settings WHERE id = 1').get();
     return res.json({ success: true, message: 'Site settings updated successfully', data: formatSettings(updated) });
   } catch (err) {
     console.error('Update settings error:', err);

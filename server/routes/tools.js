@@ -24,7 +24,7 @@ function formatTool(row) {
 }
 
 // GET /api/tools
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -44,9 +44,9 @@ router.get('/', (req, res) => {
 
     let rows;
     if (showAll && isAdmin) {
-      rows = db.prepare('SELECT * FROM tools ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM tools ORDER BY display_order ASC, id ASC').all();
     } else {
-      rows = db.prepare('SELECT * FROM tools WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM tools WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
     }
 
     return res.json({ success: true, data: rows.map(formatTool) });
@@ -57,7 +57,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/tools (Protected)
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, role, category, iconKey, customIconUrl, displayOrder, isVisible } = req.body;
 
@@ -67,7 +67,7 @@ router.post('/', authenticateToken, (req, res) => {
 
     let order = displayOrder;
     if (order === undefined || order === null) {
-      const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM tools').get()?.maxOrder || 0;
+      const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM tools').get())?.maxOrder || 0;
       order = maxOrder + 1;
     }
 
@@ -76,7 +76,7 @@ router.post('/', authenticateToken, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const result = await stmt.run(
       name,
       role || '',
       category || 'Desain',
@@ -86,9 +86,9 @@ router.post('/', authenticateToken, (req, res) => {
       isVisible === false ? 0 : 1
     );
 
-    logActivity('Tool Added', `Added tool "${name}" (${category || 'Desain'})`);
+    await logActivity('Tool Added', `Added tool "${name}" (${category || 'Desain'})`);
 
-    const created = db.prepare('SELECT * FROM tools WHERE id = ?').get(result.lastInsertRowid);
+    const created = await db.prepare('SELECT * FROM tools WHERE id = ?').get(result.lastInsertRowid);
     return res.status(201).json({ success: true, message: 'Tool added successfully', data: formatTool(created) });
   } catch (err) {
     console.error('Add tool error:', err);
@@ -97,10 +97,10 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/tools/:id (Protected)
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare('SELECT * FROM tools WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM tools WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Tool not found' });
     }
@@ -124,7 +124,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       name,
       role ?? existing.role,
       category ?? existing.category,
@@ -135,9 +135,9 @@ router.put('/:id', authenticateToken, (req, res) => {
       id
     );
 
-    logActivity('Tool Updated', `Updated tool "${name}"`);
+    await logActivity('Tool Updated', `Updated tool "${name}"`);
 
-    const updated = db.prepare('SELECT * FROM tools WHERE id = ?').get(id);
+    const updated = await db.prepare('SELECT * FROM tools WHERE id = ?').get(id);
     return res.json({ success: true, message: 'Tool updated successfully', data: formatTool(updated) });
   } catch (err) {
     console.error('Update tool error:', err);
@@ -146,19 +146,19 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/tools/:id/visibility (Protected)
-router.patch('/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const tool = db.prepare('SELECT id, name, is_visible FROM tools WHERE id = ?').get(id);
+    const tool = await db.prepare('SELECT id, name, is_visible FROM tools WHERE id = ?').get(id);
     if (!tool) {
       return res.status(404).json({ success: false, message: 'Tool not found' });
     }
 
     const newVisibility = req.body.isVisible !== undefined ? (req.body.isVisible ? 1 : 0) : (tool.is_visible ? 0 : 1);
-    db.prepare('UPDATE tools SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
+    await db.prepare('UPDATE tools SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
 
     const statusText = newVisibility ? 'Visible' : 'Hidden';
-    logActivity('Tool Visibility Changed', `Tool "${tool.name}" set to ${statusText}`);
+    await logActivity('Tool Visibility Changed', `Tool "${tool.name}" set to ${statusText}`);
 
     return res.json({
       success: true,
@@ -172,7 +172,7 @@ router.patch('/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/tools/reorder/batch (Protected)
-router.patch('/reorder/batch', authenticateToken, (req, res) => {
+router.patch('/reorder/batch', authenticateToken, async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {
@@ -182,11 +182,11 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
     const stmt = db.prepare('UPDATE tools SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     for (const item of items) {
       if (item.id && item.displayOrder !== undefined) {
-        stmt.run(Number(item.displayOrder), item.id);
+        await stmt.run(Number(item.displayOrder), item.id);
       }
     }
 
-    logActivity('Tools Reordered', `Updated display order for ${items.length} tools`);
+    await logActivity('Tools Reordered', `Updated display order for ${items.length} tools`);
     return res.json({ success: true, message: 'Tools order updated successfully.' });
   } catch (err) {
     console.error('Reorder tools error:', err);
@@ -195,16 +195,16 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/tools/:id (Protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const tool = db.prepare('SELECT id, name FROM tools WHERE id = ?').get(id);
+    const tool = await db.prepare('SELECT id, name FROM tools WHERE id = ?').get(id);
     if (!tool) {
       return res.status(404).json({ success: false, message: 'Tool not found' });
     }
 
-    db.prepare('DELETE FROM tools WHERE id = ?').run(id);
-    logActivity('Tool Deleted', `Deleted tool "${tool.name}"`);
+    await db.prepare('DELETE FROM tools WHERE id = ?').run(id);
+    await logActivity('Tool Deleted', `Deleted tool "${tool.name}"`);
 
     return res.json({ success: true, message: `Tool "${tool.name}" deleted successfully.` });
   } catch (err) {

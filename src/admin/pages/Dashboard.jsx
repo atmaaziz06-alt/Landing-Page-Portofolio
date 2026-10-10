@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { formatUpdateTime, readHistory, subscribeContentUpdates } from '../../utils/contentStore';
+import { formatUpdateTime, subscribeContentUpdates } from '../../utils/contentStore';
 import {
   FolderKanban,
   Briefcase,
@@ -24,7 +24,19 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [contentHistory, setContentHistory] = useState(() => readHistory());
+  const [contentHistory, setContentHistory] = useState([]);
+
+  const fetchContentHistory = async () => {
+    try {
+      const response = await api.getContentHistory();
+      if (!response?.success || !Array.isArray(response.data)) {
+        throw new Error(response?.message || 'Format histori dari server tidak valid.');
+      }
+      setContentHistory(response.data);
+    } catch (err) {
+      console.error('Failed to load content history:', err);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -45,9 +57,8 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    return subscribeContentUpdates(() => {
-      setContentHistory(readHistory());
-    });
+    void fetchContentHistory();
+    return subscribeContentUpdates(fetchContentHistory);
   }, []);
 
   const handleRefresh = () => {

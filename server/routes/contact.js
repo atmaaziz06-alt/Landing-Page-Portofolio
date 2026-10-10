@@ -39,7 +39,7 @@ function formatSocial(row) {
 }
 
 // GET /api/contact
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -57,12 +57,12 @@ router.get('/', (req, res) => {
       }
     }
 
-    const contactRow = db.prepare('SELECT * FROM contact_settings WHERE id = 1').get();
+    const contactRow = await db.prepare('SELECT * FROM contact_settings WHERE id = 1').get();
     let socialsRows;
     if (showAll && isAdmin) {
-      socialsRows = db.prepare('SELECT * FROM social_links ORDER BY display_order ASC, id ASC').all();
+      socialsRows = await db.prepare('SELECT * FROM social_links ORDER BY display_order ASC, id ASC').all();
     } else {
-      socialsRows = db.prepare('SELECT * FROM social_links WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
+      socialsRows = await db.prepare('SELECT * FROM social_links WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
     }
 
     return res.json({
@@ -79,7 +79,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/contact (Protected)
-router.put('/', authenticateToken, (req, res) => {
+router.put('/', authenticateToken, async (req, res) => {
   try {
     const {
       ctaTitle,
@@ -112,7 +112,7 @@ router.put('/', authenticateToken, (req, res) => {
       WHERE id = 1
     `);
 
-    stmt.run(
+    await stmt.run(
       ctaTitle || "Have a project in mind? Let's create something iconic.",
       ctaDescription || '',
       email,
@@ -124,9 +124,9 @@ router.put('/', authenticateToken, (req, res) => {
       secondaryBtnLink || `mailto:${email}`
     );
 
-    logActivity('Contact Updated', `Updated contact & CTA settings`);
+    await logActivity('Contact Updated', `Updated contact & CTA settings`);
 
-    const updated = db.prepare('SELECT * FROM contact_settings WHERE id = 1').get();
+    const updated = await db.prepare('SELECT * FROM contact_settings WHERE id = 1').get();
     return res.json({ success: true, message: 'Contact settings updated successfully', data: formatContact(updated) });
   } catch (err) {
     console.error('Update contact error:', err);
@@ -135,7 +135,7 @@ router.put('/', authenticateToken, (req, res) => {
 });
 
 // POST /api/contact/socials (Protected)
-router.post('/socials', authenticateToken, (req, res) => {
+router.post('/socials', authenticateToken, async (req, res) => {
   try {
     const { name, url, username, displayOrder, isVisible } = req.body;
     if (!name || !url) {
@@ -144,7 +144,7 @@ router.post('/socials', authenticateToken, (req, res) => {
 
     let order = displayOrder;
     if (order === undefined || order === null) {
-      const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM social_links').get()?.maxOrder || 0;
+      const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM social_links').get())?.maxOrder || 0;
       order = maxOrder + 1;
     }
 
@@ -153,10 +153,10 @@ router.post('/socials', authenticateToken, (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(name, url, username || '', Number(order), isVisible === false ? 0 : 1);
-    logActivity('Social Link Added', `Added social link "${name}"`);
+    const result = await stmt.run(name, url, username || '', Number(order), isVisible === false ? 0 : 1);
+    await logActivity('Social Link Added', `Added social link "${name}"`);
 
-    const created = db.prepare('SELECT * FROM social_links WHERE id = ?').get(result.lastInsertRowid);
+    const created = await db.prepare('SELECT * FROM social_links WHERE id = ?').get(result.lastInsertRowid);
     return res.status(201).json({ success: true, message: 'Social link added successfully', data: formatSocial(created) });
   } catch (err) {
     console.error('Add social error:', err);
@@ -165,10 +165,10 @@ router.post('/socials', authenticateToken, (req, res) => {
 });
 
 // PUT /api/contact/socials/:id (Protected)
-router.put('/socials/:id', authenticateToken, (req, res) => {
+router.put('/socials/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare('SELECT * FROM social_links WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM social_links WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Social link not found' });
     }
@@ -189,7 +189,7 @@ router.put('/socials/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       name,
       url,
       username ?? existing.username,
@@ -198,9 +198,9 @@ router.put('/socials/:id', authenticateToken, (req, res) => {
       id
     );
 
-    logActivity('Social Link Updated', `Updated social link "${name}"`);
+    await logActivity('Social Link Updated', `Updated social link "${name}"`);
 
-    const updated = db.prepare('SELECT * FROM social_links WHERE id = ?').get(id);
+    const updated = await db.prepare('SELECT * FROM social_links WHERE id = ?').get(id);
     return res.json({ success: true, message: 'Social link updated successfully', data: formatSocial(updated) });
   } catch (err) {
     console.error('Update social error:', err);
@@ -209,19 +209,19 @@ router.put('/socials/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/contact/socials/:id/visibility (Protected)
-router.patch('/socials/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/socials/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const soc = db.prepare('SELECT id, name, is_visible FROM social_links WHERE id = ?').get(id);
+    const soc = await db.prepare('SELECT id, name, is_visible FROM social_links WHERE id = ?').get(id);
     if (!soc) {
       return res.status(404).json({ success: false, message: 'Social link not found' });
     }
 
     const newVisibility = req.body.isVisible !== undefined ? (req.body.isVisible ? 1 : 0) : (soc.is_visible ? 0 : 1);
-    db.prepare('UPDATE social_links SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
+    await db.prepare('UPDATE social_links SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
 
     const statusText = newVisibility ? 'Visible' : 'Hidden';
-    logActivity('Social Visibility Changed', `Social link "${soc.name}" set to ${statusText}`);
+    await logActivity('Social Visibility Changed', `Social link "${soc.name}" set to ${statusText}`);
 
     return res.json({
       success: true,
@@ -235,16 +235,16 @@ router.patch('/socials/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/contact/socials/:id (Protected)
-router.delete('/socials/:id', authenticateToken, (req, res) => {
+router.delete('/socials/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const soc = db.prepare('SELECT id, name FROM social_links WHERE id = ?').get(id);
+    const soc = await db.prepare('SELECT id, name FROM social_links WHERE id = ?').get(id);
     if (!soc) {
       return res.status(404).json({ success: false, message: 'Social link not found' });
     }
 
-    db.prepare('DELETE FROM social_links WHERE id = ?').run(id);
-    logActivity('Social Link Deleted', `Deleted social link "${soc.name}"`);
+    await db.prepare('DELETE FROM social_links WHERE id = ?').run(id);
+    await logActivity('Social Link Deleted', `Deleted social link "${soc.name}"`);
 
     return res.json({ success: true, message: `Social link "${soc.name}" deleted successfully.` });
   } catch (err) {

@@ -9,7 +9,7 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_vezta_admin_jwt_key_2026_x89a';
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { identifier, password } = req.body; // identifier can be username or email
 
@@ -18,7 +18,7 @@ router.post('/login', (req, res) => {
     }
 
     const trimmedIdentifier = identifier.trim().toLowerCase();
-    const user = db.prepare(`
+    const user = await db.prepare(`
       SELECT * FROM users 
       WHERE LOWER(email) = ? OR LOWER(username) = ? OR (LOWER(?) = 'admin' AND role = 'admin') OR (LOWER(?) = 'kepo@gmail.com' AND role = 'admin') OR (LOWER(?) = 'kepo' AND role = 'admin')
     `).get(trimmedIdentifier, trimmedIdentifier, trimmedIdentifier, trimmedIdentifier, trimmedIdentifier);
@@ -39,7 +39,7 @@ router.post('/login', (req, res) => {
       { expiresIn: '7d' }
     );
 
-    logActivity('Admin Login', `Admin ${user.name} logged in`);
+    await logActivity('Admin Login', `Admin ${user.name} logged in`);
 
     return res.json({
       success: true,
@@ -60,9 +60,9 @@ router.post('/login', (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = db.prepare('SELECT id, username, email, name, role FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT id, username, email, name, role FROM users WHERE id = ?').get(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
@@ -73,7 +73,7 @@ router.get('/me', authenticateToken, (req, res) => {
 });
 
 // POST /api/auth/change-password
-router.post('/change-password', authenticateToken, (req, res) => {
+router.post('/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -85,7 +85,7 @@ router.post('/change-password', authenticateToken, (req, res) => {
       return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
@@ -96,9 +96,9 @@ router.post('/change-password', authenticateToken, (req, res) => {
     }
 
     const newHash = bcrypt.hashSync(newPassword, 10);
-    db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, req.user.id);
+    await db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, req.user.id);
 
-    logActivity('Password Changed', `User ${user.username} updated their password`);
+    await logActivity('Password Changed', `User ${user.username} updated their password`);
 
     return res.json({ success: true, message: 'Password updated successfully.' });
   } catch (err) {

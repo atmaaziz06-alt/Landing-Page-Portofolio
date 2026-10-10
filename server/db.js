@@ -1,7 +1,5 @@
 // server/db.js
-import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
@@ -18,7 +16,7 @@ import {
   initialEvents
 } from './seedData.js';
 
-dotenv.config();
+if (!process.env.VERCEL) dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,392 +37,127 @@ if (!process.env.VERCEL) {
 let nativeDb = null;
 if (DatabaseSync) {
   try {
-    let dbPath = path.resolve(__dirname, 'portfolio.db');
-    if (process.env.VERCEL) {
-      const tmpDir = os.platform() === 'win32' ? os.tmpdir() : '/tmp';
-      const tmpDbPath = path.resolve(tmpDir, 'portfolio.db');
-      if (!fs.existsSync(tmpDir)) {
-        fs.mkdirSync(tmpDir, { recursive: true });
-      }
-      if (!fs.existsSync(tmpDbPath) && fs.existsSync(dbPath)) {
-        fs.copyFileSync(dbPath, tmpDbPath);
-      }
-      dbPath = tmpDbPath;
-    }
+    const dbPath = path.resolve(__dirname, 'portfolio.db');
     nativeDb = new DatabaseSync(dbPath);
     try {
       nativeDb.exec('PRAGMA journal_mode = WAL;');
     } catch (_) {}
     nativeDb.exec('PRAGMA foreign_keys = ON;');
   } catch (err) {
-    console.warn('[DB] Native SQLite initialization error, switching to Memory Store:', err.message);
+    console.warn('[DB] Native SQLite could not be initialized; no durable local database is available:', err.message);
     nativeDb = null;
   }
 }
 
-// 3. Resilient In-Memory Database Engine for Vercel Serverless
-function createMemoryDB() {
-  const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
-  const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
-  const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
-  const passwordHash = bcrypt.hashSync(defaultPassword, 10);
+const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '');
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const useSupabase = Boolean(process.env.VERCEL);
 
-  const state = {
-    users: [
-      {
-        id: 1,
-        username: adminUsername,
-        email: adminEmail,
-        password_hash: passwordHash,
-        name: 'Raditya Atma Aziz',
-        role: 'admin',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ],
-    profiles: [
-      {
-        id: 1,
-        name: initialProfile.name,
-        brand_name: initialProfile.brandName,
-        monogram: initialProfile.monogram,
-        eyebrow: initialProfile.eyebrow,
-        role: initialProfile.role,
-        location: initialProfile.location,
-        headline_prefix: initialProfile.headlinePrefix,
-        description: initialProfile.description,
-        bio: initialProfile.bio,
-        avatar_url: initialProfile.avatarUrl,
-        about_image_url: initialProfile.aboutImageUrl,
-        availability_badge: initialProfile.availabilityBadge,
-        availability_status_text: initialProfile.availabilityStatusText,
-        availability_period: initialProfile.availabilityPeriod,
-        resume_url: initialProfile.resumeUrl,
-        resume_label: initialProfile.resumeLabel,
-        updated_at: new Date().toISOString()
-      }
-    ],
-    projects: initialProjects.map((p, idx) => ({
-      id: p.id,
-      title: p.title,
-      category: p.category,
-      type: p.type,
-      year: p.year,
-      image: p.image,
-      images: JSON.stringify(p.images || []),
-      description: p.description,
-      role: p.role,
-      client: p.client,
-      link: p.link,
-      link_label: p.linkLabel,
-      services: JSON.stringify(p.services || []),
-      highlight: p.highlight,
-      deliverables: JSON.stringify(p.deliverables || []),
-      display_order: p.displayOrder ?? idx,
-      is_visible: p.isVisible !== false ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    experiences: initialExperience.map((e, idx) => ({
-      id: idx + 1,
-      period: e.period,
-      role: e.role,
-      company: e.company,
-      location: e.location,
-      description: e.description,
-      highlights: JSON.stringify(e.highlights || []),
-      logo_url: e.logoUrl,
-      display_order: e.displayOrder ?? idx,
-      is_visible: e.isVisible !== false ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    tools: initialTools.map((t, idx) => ({
-      id: idx + 1,
-      name: t.name,
-      role: t.role,
-      category: t.category,
-      icon_key: t.iconKey,
-      custom_icon_url: t.customIconUrl,
-      display_order: t.displayOrder ?? idx,
-      is_visible: t.isVisible !== false ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    skills: initialSkills.map((s, idx) => ({
-      id: idx + 1,
-      number: s.number,
-      title: s.title,
-      description: s.description,
-      deliverables: JSON.stringify(s.deliverables || []),
-      display_order: s.displayOrder ?? idx,
-      is_visible: s.isVisible !== false ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    social_links: initialSocials.map((s, idx) => ({
-      id: idx + 1,
-      name: s.name,
-      url: s.url,
-      username: s.username,
-      display_order: s.displayOrder ?? idx,
-      is_visible: s.isVisible !== false ? 1 : 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })),
-    contact_settings: [
-      {
-        id: 1,
-        cta_title: initialContact.ctaTitle,
-        cta_description: initialContact.ctaDescription,
-        email: initialContact.email,
-        phone: initialContact.phone,
-        whatsapp: initialContact.whatsapp,
-        primary_btn_text: initialContact.primaryBtnText,
-        primary_btn_link: initialContact.primaryBtnLink,
-        secondary_btn_text: initialContact.secondaryBtnText,
-        secondary_btn_link: initialContact.secondaryBtnLink,
-        updated_at: new Date().toISOString()
-      }
-    ],
-    site_settings: [
-      {
-        id: 1,
-        site_title: initialSettings.siteTitle,
-        brand_name: initialSettings.brandName,
-        site_description: initialSettings.siteDescription,
-        footer_brand: initialSettings.footerBrand,
-        footer_copyright: initialSettings.footerCopyright,
-        footer_note: initialSettings.footerNote,
-        seo_title: initialSettings.seoTitle,
-        seo_description: initialSettings.seoDescription,
-        seo_keywords: initialSettings.seoKeywords,
-        og_image: initialSettings.ogImage,
-        updated_at: new Date().toISOString()
-      }
-    ],
-    events: [],
-    certifications: [],
-    activity_logs: []
-  };
-
-  function getTable(name) {
-    const key = name.toLowerCase();
-    if (!state[key]) {
-      state[key] = [];
-    }
-    return state[key];
+async function callSupabaseRpc(functionName, parameters) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Supabase persistence is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
 
-  function handleSelect(sql, params, mode) {
-    const fromMatch = sql.match(/FROM\s+([a-zA-Z_]+)/i);
-    if (!fromMatch) return mode === 'all' ? [] : undefined;
-    const tableName = fromMatch[1].toLowerCase();
-    const table = getTable(tableName);
-
-    // 1. COUNT
-    if (sql.includes('COUNT(*)')) {
-      let filtered = table;
-      if (sql.includes('is_visible = 1')) {
-        filtered = filtered.filter(item => item.is_visible == 1);
-      }
-      return { count: filtered.length };
-    }
-
-    // 2. MAX
-    if (sql.includes('MAX(')) {
-      const fieldMatch = sql.match(/MAX\(([a-zA-Z_]+)\)/i);
-      const field = fieldMatch ? fieldMatch[1] : 'display_order';
-      const maxVal = table.reduce((max, item) => Math.max(max, Number(item[field]) || 0), 0);
-      return { maxOrder: maxVal };
-    }
-
-    // 3. User lookup
-    if (tableName === 'users') {
-      if (sql.includes('LOWER(email)')) {
-        const id = String(params[0] || '').toLowerCase();
-        return table.find(u => 
-          u.email.toLowerCase() === id || 
-          u.username.toLowerCase() === id || 
-          (id === 'admin' && u.role === 'admin') ||
-          (id === 'kepo@gmail.com' && u.role === 'admin') ||
-          (id === 'kepo' && u.role === 'admin')
-        );
-      }
-      if (sql.includes('WHERE id = ?')) {
-        const targetId = params[0];
-        const user = table.find(u => String(u.id) === String(targetId));
-        if (user && sql.includes('SELECT id, username, email, name, role')) {
-          return { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role };
-        }
-        return user;
-      }
-    }
-
-    // 4. By ID
-    if (sql.includes('WHERE id = ?')) {
-      const targetId = params[0];
-      return table.find(item => String(item.id) === String(targetId));
-    }
-
-    // 5. WHERE is_visible = 1
-    let result = table;
-    if (sql.includes('is_visible = 1')) {
-      result = result.filter(item => item.is_visible == 1);
-    }
-
-    // 6. ORDER BY
-    if (sql.includes('ORDER BY display_order ASC')) {
-      result = [...result].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-    } else if (sql.includes('ORDER BY id DESC')) {
-      result = [...result].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
-    }
-
-    // 7. LIMIT
-    if (sql.includes('LIMIT 10')) {
-      result = result.slice(0, 10);
-    }
-
-    if (mode === 'all') {
-      return result;
-    }
-    return result[0];
-  }
-
-  function handleInsert(sql, params) {
-    const intoMatch = sql.match(/INSERT\s+INTO\s+([a-zA-Z_]+)/i);
-    if (!intoMatch) return { changes: 0 };
-    const tableName = intoMatch[1].toLowerCase();
-    const table = getTable(tableName);
-
-    const colsMatch = sql.match(/\(([^)]+)\)\s+VALUES/i);
-    const cols = colsMatch ? colsMatch[1].split(',').map(c => c.trim()) : [];
-
-    const newObj = {};
-    cols.forEach((col, i) => {
-      newObj[col] = params[i];
-    });
-
-    if (!newObj.id) {
-      const maxId = table.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
-      newObj.id = maxId + 1;
-    }
-
-    newObj.created_at = newObj.created_at || new Date().toISOString();
-    newObj.updated_at = new Date().toISOString();
-
-    table.push(newObj);
-    return { changes: 1, lastInsertRowid: newObj.id };
-  }
-
-  function handleUpdate(sql, params) {
-    const updateMatch = sql.match(/UPDATE\s+([a-zA-Z_]+)/i);
-    if (!updateMatch) return { changes: 0 };
-    const tableName = updateMatch[1].toLowerCase();
-    const table = getTable(tableName);
-
-    // Target ID is the last parameter in WHERE ... id = ?
-    const targetId = params[params.length - 1];
-    let target = table.find(item => String(item.id) === String(targetId));
-
-    if (!target && (targetId === 1 || tableName === 'site_settings' || tableName === 'contact_settings' || tableName === 'profiles')) {
-      target = table[0];
-    }
-
-    if (!target) return { changes: 0 };
-
-    if (sql.includes('SET is_visible = ?')) {
-      target.is_visible = params[0];
-      target.updated_at = new Date().toISOString();
-      return { changes: 1 };
-    }
-
-    if (sql.includes('SET display_order = ?')) {
-      target.display_order = params[0];
-      target.updated_at = new Date().toISOString();
-      return { changes: 1 };
-    }
-
-    if (sql.includes('SET password_hash = ?')) {
-      target.password_hash = params[0];
-      target.updated_at = new Date().toISOString();
-      return { changes: 1 };
-    }
-
-    // Generic multi-field update
-    const setMatch = sql.match(/SET\s+([\s\S]+?)\s+WHERE/i);
-    if (setMatch) {
-      const setClauses = setMatch[1].split(',').map(s => s.trim());
-      let paramIdx = 0;
-      for (const clause of setClauses) {
-        if (clause.includes('=')) {
-          const colName = clause.split('=')[0].trim();
-          if (clause.includes('CURRENT_TIMESTAMP')) {
-            target[colName] = new Date().toISOString();
-          } else if (clause.includes('?')) {
-            target[colName] = params[paramIdx++];
-          }
-        }
-      }
-      target.updated_at = new Date().toISOString();
-    }
-
-    return { changes: 1 };
-  }
-
-  function handleDelete(sql, params) {
-    const fromMatch = sql.match(/FROM\s+([a-zA-Z_]+)/i);
-    if (!fromMatch) return { changes: 0 };
-    const tableName = fromMatch[1].toLowerCase();
-    const table = getTable(tableName);
-
-    const targetId = params[0];
-    const idx = table.findIndex(item => String(item.id) === String(targetId));
-    if (idx !== -1) {
-      table.splice(idx, 1);
-      return { changes: 1 };
-    }
-    return { changes: 0 };
-  }
-
-  return {
-    exec(sql) {
-      // Schema creates are implicit in Memory Store
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseServiceRoleKey,
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+      'Content-Type': 'application/json'
     },
-    prepare(sql) {
-      const normalized = sql.trim().replace(/\s+/g, ' ');
-
-      return {
-        get(...params) {
-          return handleSelect(normalized, params, 'get');
-        },
-        all(...params) {
-          return handleSelect(normalized, params, 'all');
-        },
-        run(...params) {
-          if (normalized.startsWith('INSERT')) {
-            return handleInsert(normalized, params);
-          }
-          if (normalized.startsWith('UPDATE')) {
-            return handleUpdate(normalized, params);
-          }
-          if (normalized.startsWith('DELETE')) {
-            return handleDelete(normalized, params);
-          }
-          return { changes: 1 };
-        }
-      };
-    }
-  };
+    body: JSON.stringify(parameters)
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(payload?.message || payload?.details || `Supabase request failed (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
 }
 
-// Export active database instance (Native SQLite or resilient Serverless Memory Engine)
-export const db = nativeDb || createMemoryDB();
+async function supabaseQuery(sql, params, mode) {
+  return callSupabaseRpc('cms_execute', {
+    p_sql: sql,
+    p_params: params,
+    p_mode: mode
+  });
+}
 
-// Initialize Tables and seed if using native SQLite
-export function initDB() {
-  if (nativeDb) {
-    nativeDb.exec(`
+const supabaseDb = {
+  isSupabase: true,
+  prepare(sql) {
+    return {
+      get: async (...params) => supabaseQuery(sql, params, 'one'),
+      all: async (...params) => supabaseQuery(sql, params, 'all'),
+      run: async (...params) => supabaseQuery(sql, params, 'run')
+    };
+  },
+  async saveContentSnapshot({ section, sectionKey, action, details, snapshot }) {
+    return callSupabaseRpc('cms_save_content_snapshot', {
+      p_section: section || 'Konten',
+      p_section_key: sectionKey || '',
+      p_action: action || 'Update',
+      p_details: details || '',
+      p_snapshot: snapshot
+    });
+  },
+  async restoreContentSnapshot(id) {
+    return callSupabaseRpc('cms_restore_content_snapshot', { p_history_id: id });
+  }
+};
+
+const unavailableDb = {
+  prepare() {
+    const unavailable = () => {
+      throw new Error('No durable database is available. Configure Supabase on Vercel or use Node.js 22.13+ locally.');
+    };
+    return { get: unavailable, all: unavailable, run: unavailable };
+  },
+  exec() {
+    throw new Error('No durable database is available.');
+  }
+};
+
+// Local SQLite remains synchronous; callers await these methods so the same
+// route code can use the asynchronous Supabase RPC adapter in production.
+export const db = nativeDb || (useSupabase ? supabaseDb : unavailableDb);
+export const isSupabase = useSupabase;
+
+export let databaseStatus = {
+  ready: Boolean(nativeDb),
+  message: nativeDb ? '' : 'Persistent database is not initialized.'
+};
+
+// Initialize the local SQLite schema or verify and seed durable Supabase storage.
+export async function initDB() {
+  if (!nativeDb) {
+    if (useSupabase) {
+      if (!supabaseUrl || !supabaseServiceRoleKey) {
+        databaseStatus = {
+          ready: false,
+          message: 'Durable CMS storage is unavailable. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+        };
+        console.error(`[DB] ${databaseStatus.message}`);
+        return databaseStatus;
+      }
+      try {
+        await supabaseQuery('SELECT 1 AS ready', [], 'one');
+        await seedSupabaseData();
+        databaseStatus = { ready: true, message: '' };
+      } catch (error) {
+        databaseStatus = {
+          ready: false,
+          message: 'Supabase is not ready. Apply the database migration and verify the Supabase service configuration.'
+        };
+        console.error(`[DB] ${databaseStatus.message}`, error.message);
+      }
+      return databaseStatus;
+    }
+    throw new Error('Persistent SQLite is unavailable. Run this application on Node.js 22.13 or newer.');
+  }
+
+  nativeDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -599,17 +332,183 @@ export function initDB() {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    seedInitialData();
-  }
+      CREATE TABLE IF NOT EXISTS content_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        section TEXT NOT NULL,
+        section_key TEXT,
+        action TEXT NOT NULL,
+        details TEXT,
+        snapshot_json TEXT NOT NULL,
+        previous_snapshot_json TEXT
+      );
+  `);
+
+  seedInitialData();
+  databaseStatus = { ready: true, message: '' };
+  return databaseStatus;
+}
+
+async function seedSupabaseData() {
+  const timestamp = new Date().toISOString();
+  const withTimestamps = (row) => ({ ...row, created_at: timestamp, updated_at: timestamp });
+  const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
+  const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
+
+  const seed = {
+    users: [withTimestamps({
+      id: 1,
+      username: adminUsername,
+      email: adminEmail,
+      password_hash: bcrypt.hashSync(adminPassword, 10),
+      name: 'Raditya Atma Aziz',
+      role: 'admin'
+    })],
+    profiles: [{
+      id: 1,
+      name: initialProfile.name,
+      brand_name: initialProfile.brandName,
+      monogram: initialProfile.monogram,
+      eyebrow: initialProfile.eyebrow,
+      role: initialProfile.role,
+      location: initialProfile.location,
+      headline_prefix: initialProfile.headlinePrefix,
+      description: initialProfile.description,
+      bio: initialProfile.bio,
+      avatar_url: initialProfile.avatarUrl,
+      about_image_url: initialProfile.aboutImageUrl,
+      availability_badge: initialProfile.availabilityBadge,
+      availability_status_text: initialProfile.availabilityStatusText,
+      availability_period: initialProfile.availabilityPeriod,
+      resume_url: initialProfile.resumeUrl,
+      resume_label: initialProfile.resumeLabel,
+      updated_at: timestamp
+    }],
+    projects: initialProjects.map(item => withTimestamps({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      type: item.type,
+      year: item.year,
+      image: item.image,
+      images: JSON.stringify(item.images || []),
+      description: item.description,
+      role: item.role,
+      client: item.client,
+      link: item.link,
+      link_label: item.linkLabel,
+      services: JSON.stringify(item.services || []),
+      highlight: item.highlight,
+      deliverables: item.deliverables,
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    experiences: initialExperience.map((item, index) => withTimestamps({
+      id: index + 1,
+      period: item.period,
+      role: item.role,
+      company: item.company,
+      location: item.location,
+      description: item.description,
+      highlights: JSON.stringify(item.highlights || []),
+      logo_url: item.logoUrl || '',
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    tools: initialTools.map((item, index) => withTimestamps({
+      id: index + 1,
+      name: item.name,
+      role: item.role,
+      category: item.category,
+      icon_key: item.iconKey,
+      custom_icon_url: item.customIconUrl || '',
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    skills: initialSkills.map((item, index) => withTimestamps({
+      id: index + 1,
+      number: item.number,
+      title: item.title,
+      description: item.description,
+      deliverables: JSON.stringify(item.deliverables || []),
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    social_links: initialSocials.map((item, index) => withTimestamps({
+      id: index + 1,
+      name: item.name,
+      url: item.url,
+      username: item.username,
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    contact_settings: [{
+      id: 1,
+      cta_title: initialContact.ctaTitle,
+      cta_description: initialContact.ctaDescription,
+      email: initialContact.email,
+      phone: initialContact.phone,
+      whatsapp: initialContact.whatsapp,
+      primary_btn_text: initialContact.primaryBtnText,
+      primary_btn_link: initialContact.primaryBtnLink,
+      secondary_btn_text: initialContact.secondaryBtnText,
+      secondary_btn_link: initialContact.secondaryBtnLink,
+      updated_at: timestamp
+    }],
+    site_settings: [{
+      id: 1,
+      site_title: initialSettings.siteTitle,
+      brand_name: initialSettings.brandName,
+      site_description: initialSettings.siteDescription,
+      footer_brand: initialSettings.footerBrand,
+      footer_copyright: initialSettings.footerCopyright,
+      footer_note: initialSettings.footerNote,
+      seo_title: initialSettings.seoTitle,
+      seo_description: initialSettings.seoDescription,
+      seo_keywords: initialSettings.seoKeywords,
+      og_image: initialSettings.ogImage,
+      updated_at: timestamp
+    }],
+    events: initialEvents.map((item, index) => withTimestamps({
+      id: index + 1,
+      title: item.title,
+      organizer: item.organizer || '',
+      date: item.date || '',
+      period: item.period || '',
+      location: item.location || '',
+      role: item.role || '',
+      description: item.description || '',
+      image_url: item.imageUrl || '',
+      link_url: item.linkUrl || '',
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    })),
+    certifications: initialCertifications.map((item, index) => withTimestamps({
+      id: index + 1,
+      title: item.title,
+      issuer: item.issuer,
+      issue_date: item.issueDate || '',
+      expiry_date: item.expiryDate || '',
+      credential_id: item.credentialId || '',
+      credential_url: item.credentialUrl || '',
+      image_url: item.imageUrl || '',
+      category: item.category || '',
+      description: item.description || '',
+      display_order: item.displayOrder,
+      is_visible: item.isVisible === false ? 0 : 1
+    }))
+  };
+
+  await callSupabaseRpc('cms_initialize', { p_seed: seed });
 }
 
 // Activity logging helper
-export function logActivity(action, details = '') {
+export async function logActivity(action, details = '') {
   try {
     const stmt = db.prepare('INSERT INTO activity_logs (action, details) VALUES (?, ?)');
-    stmt.run(action, details);
+    await stmt.run(action, details);
   } catch (err) {
     console.error('Failed to log activity:', err);
   }

@@ -1,77 +1,205 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clock, Eye, History, X, Trash2, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   formatUpdateTime,
-  readHistory,
   subscribeContentUpdates,
-  HISTORY_PAGE_SIZE,
-  deleteHistoryEntry,
-  deleteOldestHistory,
-  restoreBeforeHistoryEntry,
-  canRestoreHistoryEntry
+  cachePublishedContent,
+  HISTORY_PAGE_SIZE
 } from '../../utils/contentStore';
+import { api } from '../../services/api';
 import EmptyState from '../components/EmptyState';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 
+const SKIP_KEYS = new Set([
+  'updatedAt',
+  'createdAt',
+  'previousSnapshot',
+  'snapshot',
+  'password',
+  'password_hash'
+]);
+
+function itemLabel(item, index) {
+  if (item == null) return `#${index + 1}`;
+  if (typeof item !== 'object') return String(item);
+  return item.title || item.name || item.company || item.role || item.issuer || `#${item.id ?? index + 1}`;
+}
+
 function previewValue(value) {
   if (value == null || value === '') return '—';
   if (typeof value === 'string') {
-    if (value.startsWith('data:image')) return '[Gambar terpasang]';
-    return value.length > 180 ? `${value.slice(0, 180)}…` : value;
+    if (value.startsWith('data:image') || value.startsWith('blob:')) return '[Gambar terpasang]';
+    return value.length > 160 ? `${value.slice(0, 160)}…` : value;
   }
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) {
     if (value.length === 0) return 'Tidak ada item';
-    return value
-      .map((item) => {
-        if (!item || typeof item !== 'object') return String(item);
-        return item.title || item.name || item.company || item.role || `#${item.id ?? ''}`;
-      })
-      .filter(Boolean)
-      .slice(0, 8)
-      .join(', ');
+    return value.map((item, index) => itemLabel(item, index)).filter(Boolean).slice(0, 10).join(', ');
   }
   if (typeof value === 'object') {
-    const keys = Object.keys(value).slice(0, 6);
+    const keys = Object.keys(value).filter((key) => !SKIP_KEYS.has(key)).slice(0, 8);
+    if (!keys.length) return '—';
     return keys.map((key) => `${key}: ${previewValue(value[key])}`).join(' · ');
   }
   return String(value);
 }
 
-function SectionPreview({ title, data }) {
-  if (data == null) {
+function stableString(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value);
+  }
+}
+
+function flattenObject(data, prefix = '') {
+  if (data == null || typeof data !== 'object' || Array.isArray(data)) {
+    return prefix ? { [prefix]: data } : {};
+  }
+  const rows = {};
+  Object.entries(data).forEach(([key, value]) => {
+    if (SKIP_KEYS.has(key)) return;
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value) && !String(value).startsWith('data:image')) {
+      Object.assign(rows, flattenObject(value, path));
+    } else {
+      rows[path] = value;
+    }
+  });
+  return rows;
+}
+
+function itemKey(item, index) {
+  if (item && typeof item === 'object') {
+    return String(item.id ?? item.title ?? item.name ?? item.company ?? index);
+  }
+  return String(item ?? index);
+}
+
+function compareValues(before, after) {
+  if (Array.isArray(before) || Array.isArray(after)) {
+    const prevList = Array.isArray(before) ? before : [];
+    const nextList = Array.isArray(after) ? after : [];
+    const prevMap = new Map(prevList.map((item, index) => [itemKey(item, index), item]));
+    const nextMap = new Map(nextList.map((item, index) => [itemKey(item, index), item]));
+    const keys = [...new Set([...prevMap.keys(), ...nextMap.keys()])];
+    const rows = [];
+
+    keys.forEach((key) => {
+      const prevItem = prevMap.get(key);
+      const nextItem = nextMap.get(key);
+      if (prevItem == null && nextItem != null) {
+        rows.push({
+          field: itemLabel(nextItem, 0),
+          before: '—',
+          after: previewValue(nextItem),
+          kind: 'added'
+        });
+        return;
+      }
+      if (nextItem == null && prevItem != null) {
+        rows.push({
+          field: itemLabel(prevItem, 0),
+          before: previewValue(prevItem),
+          after: 'Dihapus',
+          kind: 'removed'
+        });
+        return;
+      }
+      if (stableString(prevItem) !== stableString(nextItem)) {
+        const prevFlat = flattenObject(prevItem);
+        const nextFlat = flattenObject(nextItem);
+        const fieldKeys = [...new Set([...Object.keys(prevFlat), ...Object.keys(nextFlat)])];
+        const changedFields = fieldKeys.filter((field) => stableString(prevFlat[field]) !== stableString(nextFlat[field]));
+        rows.push({
+          field: itemLabel(nextItem || prevItem, 0),
+          before: changedFields.length
+            ? changedFields.map((field) => `${field}: ${previewValue(prevFlat[field])}`).join(' · ')
+            : previewValue(prevItem),
+          after: changedFields.length
+            ? changedFields.map((field) => `${field}: ${previewValue(nextFlat[field])}`).join(' · ')
+            : previewValue(nextItem),
+          kind: 'changed'
+        });
+      }
+    });
+
+    return rows;
+  }
+
+  const prevFlat = flattenObject(before && typeof before === 'object' && !Array.isArray(before) ? before : { nilai: before });
+  const nextFlat = flattenObject(after && typeof after === 'object' && !Array.isArray(after) ? after : { nilai: after });
+  const fieldKeys = [...new Set([...Object.keys(prevFlat), ...Object.keys(nextFlat)])];
+  const rows = [];
+
+  fieldKeys.forEach((field) => {
+    const prevValue = prevFlat[field];
+    const nextValue = nextFlat[field];
+    if (Array.isArray(prevValue) || Array.isArray(nextValue)) {
+      compareValues(prevValue, nextValue).forEach((row) => {
+        rows.push({ ...row, field: `${field} · ${row.field}` });
+      });
+      return;
+    }
+    if (stableString(prevValue) === stableString(nextValue)) return;
+    rows.push({
+      field,
+      before: previewValue(prevValue),
+      after: previewValue(nextValue),
+      kind: prevValue == null ? 'added' : nextValue == null ? 'removed' : 'changed'
+    });
+  });
+
+  return rows;
+}
+
+function kindLabel(kind) {
+  if (kind === 'added') return 'Ditambah';
+  if (kind === 'removed') return 'Dihapus';
+  return 'Diubah';
+}
+
+function kindClass(kind) {
+  if (kind === 'added') return 'bg-emerald-50 text-emerald-800';
+  if (kind === 'removed') return 'bg-red-50 text-red-700';
+  return 'bg-[#E66F52]/12 text-[#E66F52]';
+}
+
+function ChangeComparison({ before, after }) {
+  const rows = compareValues(before, after);
+
+  if (!rows.length) {
     return (
-      <div>
-        <h4 className="text-sm font-semibold text-[#171717] mb-2">{title}</h4>
-        <p className="text-xs text-[#5F5A57] italic">Tidak ada data untuk versi ini.</p>
+      <div className="rounded-2xl bg-white/70 border border-[rgba(23,23,23,0.08)] p-4">
+        <p className="text-xs text-[#5F5A57] italic">
+          Tidak ada perbedaan field yang terdeteksi. Versi sebelumnya mungkin belum tercatat
+          (misalnya entri inisialisasi).
+        </p>
       </div>
     );
   }
 
-  const entries = Array.isArray(data)
-    ? data.slice(0, 12).map((item, index) => [
-        `#${index + 1}`,
-        item && typeof item === 'object'
-          ? item.title || item.name || item.company || previewValue(item)
-          : previewValue(item)
-      ])
-    : Object.entries(data).filter(([key]) => key !== 'updatedAt' && key !== 'previousSnapshot');
-
   return (
-    <div>
-      <h4 className="text-sm font-semibold text-[#171717] mb-2">{title}</h4>
-      <div className="rounded-2xl bg-white/70 border border-[rgba(23,23,23,0.08)] divide-y divide-[rgba(23,23,23,0.06)]">
-        {entries.length === 0 ? (
-          <p className="text-xs text-[#5F5A57] italic p-3">Kosong</p>
-        ) : (
-          entries.map(([label, value]) => (
-            <div key={label} className="px-3 py-2.5 grid grid-cols-[120px_1fr] gap-3 text-xs">
-              <span className="font-medium text-[#5F5A57]">{label}</span>
-              <span className="text-[#171717] break-words">{previewValue(value)}</span>
+    <div className="rounded-2xl bg-white/70 border border-[rgba(23,23,23,0.08)] overflow-hidden">
+      <div className="grid grid-cols-[minmax(88px,0.7fr)_1fr_1fr] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider font-semibold text-[#5F5A57] bg-white/60 border-b border-[rgba(23,23,23,0.06)]">
+        <span>Field / Item</span>
+        <span>Perubahan sebelumnya</span>
+        <span>Perubahan terbaru</span>
+      </div>
+      <div className="divide-y divide-[rgba(23,23,23,0.06)]">
+        {rows.map((row) => (
+          <div key={`${row.field}-${row.kind}`} className="grid grid-cols-[minmax(88px,0.7fr)_1fr_1fr] gap-2 px-3 py-2.5 text-xs">
+            <div>
+              <p className="font-semibold text-[#171717] break-words">{row.field}</p>
+              <span className={`inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${kindClass(row.kind)}`}>
+                {kindLabel(row.kind)}
+              </span>
             </div>
-          ))
-        )}
+            <p className="text-[#5F5A57] break-words">{row.before}</p>
+            <p className="text-[#171717] font-medium break-words">{row.after}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -79,23 +207,35 @@ function SectionPreview({ title, data }) {
 
 export default function HistoryPage() {
   const toast = useToast();
-  const [history, setHistory] = useState(() => readHistory());
+  const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
   const [page, setPage] = useState(0);
   const [confirm, setConfirm] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = () => {
-    const next = readHistory();
-    setHistory(next);
-    setSelected((current) => (current ? next.find((item) => item.id === current.id) || null : null));
-  };
+  const refresh = useCallback(async () => {
+    try {
+      const response = await api.getContentHistory();
+      if (!response?.success || !Array.isArray(response.data)) {
+        throw new Error(response?.message || 'Format histori dari server tidak valid.');
+      }
+      const next = response.data;
+      setHistory(next);
+      setSelected((current) => (current ? next.find((item) => item.id === current.id) || null : null));
+    } catch (err) {
+      console.error('Gagal memuat histori update:', err);
+      toast.error(err.message || 'Gagal memuat histori update.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
     return subscribeContentUpdates(() => {
-      refresh();
+      void refresh();
     });
-  }, []);
+  }, [refresh]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
@@ -105,39 +245,50 @@ export default function HistoryPage() {
   }, [history, safePage]);
 
   const oldestBatchCount = Math.min(HISTORY_PAGE_SIZE, history.length);
-  const selectedCanRestore = selected ? canRestoreHistoryEntry(selected, history) : false;
+  const selectedCanRestore = Boolean(selected?.snapshot);
 
-  const handleDeleteOne = () => {
+  const handleDeleteOne = async () => {
     if (!selected) return;
-    deleteHistoryEntry(selected.id);
-    toast.success('Histori tersebut berhasil dihapus.');
-    setSelected(null);
-    setConfirm(null);
-    refresh();
-  };
-
-  const handleDeleteOldest = () => {
-    const removed = oldestBatchCount;
-    deleteOldestHistory(HISTORY_PAGE_SIZE);
-    toast.success(`${removed} histori terlama berhasil dihapus.`);
-    setConfirm(null);
-    setPage(0);
-    refresh();
-  };
-
-  const handleRestore = () => {
-    if (!selected) return;
-    const entry = restoreBeforeHistoryEntry(selected.id);
-    if (!entry) {
-      toast.error('Versi sebelumnya tidak tersedia untuk histori ini.');
+    try {
+      await api.deleteContentHistory(selected.id);
+      toast.success('Histori tersebut berhasil dihapus.');
+      setSelected(null);
       setConfirm(null);
-      return;
+      await refresh();
+    } catch (err) {
+      toast.error(err.message || 'Gagal menghapus histori.');
     }
-    toast.success('Konten dikembalikan ke versi sebelum histori ini. Landing page sudah diperbarui.');
-    setSelected(null);
-    setConfirm(null);
-    setPage(0);
-    refresh();
+  };
+
+  const handleDeleteOldest = async () => {
+    try {
+      const response = await api.deleteOldestContentHistory(HISTORY_PAGE_SIZE);
+      const removed = response?.data?.deleted ?? oldestBatchCount;
+      toast.success(`${removed} histori terlama berhasil dihapus.`);
+      setConfirm(null);
+      setPage(0);
+      await refresh();
+    } catch (err) {
+      toast.error(err.message || 'Gagal menghapus histori lama.');
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!selected) return;
+    try {
+      const response = await api.restoreContentHistory(selected.id);
+      if (!response?.success || !response.data?.snapshot) {
+        throw new Error(response?.message || 'Server tidak mengembalikan snapshot hasil restore.');
+      }
+      cachePublishedContent(response.data.snapshot, { broadcast: true });
+      toast.success('Versi yang dipilih dipulihkan ke database dan landing page.');
+      setSelected(null);
+      setConfirm(null);
+      setPage(0);
+      await refresh();
+    } catch (err) {
+      toast.error(err.message || 'Gagal memulihkan versi yang dipilih.');
+    }
   };
 
   return (
@@ -148,8 +299,8 @@ export default function HistoryPage() {
             Histori Update
           </h1>
           <p className="text-xs sm:text-sm text-[#5F5A57] mt-1">
-            Klik salah satu baris untuk melihat versi, menghapus histori itu, atau mengembalikan
-            konten ke kondisi sebelum update tersebut. Landing page selalu memakai entri terbaru.
+            Klik salah satu baris untuk melihat versi, menghapus catatan histori, atau memulihkan
+            konten tepat ke snapshot versi yang dipilih.
           </p>
         </div>
 
@@ -182,7 +333,9 @@ export default function HistoryPage() {
           </span>
         </div>
 
-        {history.length === 0 ? (
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-[#5F5A57]">Memuat histori dari database...</p>
+        ) : history.length === 0 ? (
           <EmptyState
             icon={History}
             title="Belum ada histori update"
@@ -285,7 +438,7 @@ export default function HistoryPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-[28px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.12)] p-5 sm:p-7 shadow-2xl"
+            className="w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-[28px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.12)] p-5 sm:p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 mb-5">
@@ -311,9 +464,17 @@ export default function HistoryPage() {
               </button>
             </div>
 
-            <div className="grid gap-5">
-              <SectionPreview title="Versi setelah update ini" data={selected.sectionData} />
-              <SectionPreview title="Versi sebelumnya" data={selected.previousSectionData} />
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-[#171717]">Perbandingan perubahan</h4>
+                <p className="text-xs text-[#5F5A57] mt-0.5">
+                  Kolom kiri = kondisi sebelum update ini. Kolom kanan = perubahan terbaru yang disimpan.
+                </p>
+              </div>
+              <ChangeComparison
+                before={selected.previousSectionData}
+                after={selected.sectionData}
+              />
             </div>
 
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 mt-6 pt-4 border-t border-[rgba(23,23,23,0.08)]">
@@ -323,17 +484,17 @@ export default function HistoryPage() {
                 onClick={() =>
                   setConfirm({
                     type: 'restore',
-                    title: 'Kembalikan versi sebelumnya',
+                    title: 'Pulihkan versi yang dipilih',
                     message:
-                      'Landing page akan dikembalikan ke kondisi sebelum update histori ini, lalu dicatat sebagai entri baru di log.',
-                    confirmText: 'Pulihkan versi sebelumnya',
+                      'Data aktif di database dan landing page akan ditimpa menggunakan snapshot versi ini. Aksi pemulihan juga dicatat sebagai histori baru.',
+                    confirmText: 'Pulihkan versi ini',
                     variant: 'primary'
                   })
                 }
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[rgba(23,23,23,0.1)] text-xs sm:text-sm font-medium text-[#171717] hover:bg-[#F6E7DF] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <RotateCcw className="w-4 h-4" />
-                Pulihkan versi sebelumnya
+                Pulihkan versi ini
               </button>
               <button
                 type="button"
@@ -342,7 +503,7 @@ export default function HistoryPage() {
                     type: 'one',
                     title: 'Hapus histori ini',
                     message:
-                      'Entri histori ini akan dihapus dari log. Jika ini versi terbaru, landing page memakai histori berikutnya.',
+                      'Entri histori ini hanya dihapus dari log. Data aktif di database dan landing page tidak berubah.',
                     confirmText: 'Hapus histori',
                     variant: 'danger'
                   })

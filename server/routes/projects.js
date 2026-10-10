@@ -50,7 +50,7 @@ function formatProject(row) {
 // GET /api/projects
 // If query ?all=true and authenticated -> returns all projects
 // Otherwise -> returns only visible projects
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -70,9 +70,9 @@ router.get('/', (req, res) => {
 
     let rows;
     if (showAll && isAdmin) {
-      rows = db.prepare('SELECT * FROM projects ORDER BY display_order ASC, created_at DESC').all();
+      rows = await db.prepare('SELECT * FROM projects ORDER BY display_order ASC, created_at DESC').all();
     } else {
-      rows = db.prepare('SELECT * FROM projects WHERE is_visible = 1 ORDER BY display_order ASC, created_at DESC').all();
+      rows = await db.prepare('SELECT * FROM projects WHERE is_visible = 1 ORDER BY display_order ASC, created_at DESC').all();
     }
 
     return res.json({ success: true, data: rows.map(formatProject) });
@@ -83,9 +83,9 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/projects/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    const row = await db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
     if (!row) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
@@ -96,7 +96,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/projects (Protected)
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       id,
@@ -127,7 +127,7 @@ router.post('/', authenticateToken, (req, res) => {
     if (!projectId) projectId = 'project-' + Date.now();
 
     // Check duplicate ID
-    const existing = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+    const existing = await db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
     if (existing) {
       projectId = `${projectId}-${Date.now().toString().slice(-4)}`;
     }
@@ -135,7 +135,7 @@ router.post('/', authenticateToken, (req, res) => {
     // Default display order
     let order = displayOrder;
     if (order === undefined || order === null) {
-      const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM projects').get()?.maxOrder || 0;
+      const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM projects').get())?.maxOrder || 0;
       order = maxOrder + 1;
     }
 
@@ -150,7 +150,7 @@ router.post('/', authenticateToken, (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(
+    await stmt.run(
       projectId,
       title,
       category || 'Desain Grafis',
@@ -170,9 +170,9 @@ router.post('/', authenticateToken, (req, res) => {
       isVisible === false ? 0 : 1
     );
 
-    logActivity('Project Created', `Added project "${title}"`);
+    await logActivity('Project Created', `Added project "${title}"`);
 
-    const created = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+    const created = await db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
     return res.status(201).json({ success: true, message: 'Project created successfully', data: formatProject(created) });
   } catch (err) {
     console.error('Create project error:', err);
@@ -181,10 +181,10 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/projects/:id (Protected)
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const projectId = req.params.id;
-    const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+    const existing = await db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
@@ -237,7 +237,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       title,
       category || existing.category,
       type ?? existing.type,
@@ -257,9 +257,9 @@ router.put('/:id', authenticateToken, (req, res) => {
       projectId
     );
 
-    logActivity('Project Updated', `Updated project "${title}"`);
+    await logActivity('Project Updated', `Updated project "${title}"`);
 
-    const updated = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+    const updated = await db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
     return res.json({ success: true, message: 'Project updated successfully', data: formatProject(updated) });
   } catch (err) {
     console.error('Update project error:', err);
@@ -268,19 +268,19 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/projects/:id/visibility (Protected)
-router.patch('/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const projectId = req.params.id;
-    const project = db.prepare('SELECT id, title, is_visible FROM projects WHERE id = ?').get(projectId);
+    const project = await db.prepare('SELECT id, title, is_visible FROM projects WHERE id = ?').get(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     const newVisibility = req.body.isVisible !== undefined ? (req.body.isVisible ? 1 : 0) : (project.is_visible ? 0 : 1);
-    db.prepare('UPDATE projects SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, projectId);
+    await db.prepare('UPDATE projects SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, projectId);
 
     const statusText = newVisibility ? 'Visible' : 'Hidden';
-    logActivity('Project Visibility Changed', `Project "${project.title}" set to ${statusText}`);
+    await logActivity('Project Visibility Changed', `Project "${project.title}" set to ${statusText}`);
 
     return res.json({
       success: true,
@@ -294,7 +294,7 @@ router.patch('/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/projects/order (Protected)
-router.patch('/reorder/batch', authenticateToken, (req, res) => {
+router.patch('/reorder/batch', authenticateToken, async (req, res) => {
   try {
     const { items } = req.body; // array of { id, displayOrder }
     if (!Array.isArray(items)) {
@@ -304,11 +304,11 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
     const stmt = db.prepare('UPDATE projects SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     for (const item of items) {
       if (item.id && item.displayOrder !== undefined) {
-        stmt.run(Number(item.displayOrder), item.id);
+        await stmt.run(Number(item.displayOrder), item.id);
       }
     }
 
-    logActivity('Projects Reordered', `Updated display order for ${items.length} projects`);
+    await logActivity('Projects Reordered', `Updated display order for ${items.length} projects`);
     return res.json({ success: true, message: 'Projects order updated successfully.' });
   } catch (err) {
     console.error('Reorder error:', err);
@@ -317,16 +317,16 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/projects/:id (Protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const projectId = req.params.id;
-    const project = db.prepare('SELECT id, title FROM projects WHERE id = ?').get(projectId);
+    const project = await db.prepare('SELECT id, title FROM projects WHERE id = ?').get(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
-    logActivity('Project Deleted', `Deleted project "${project.title}"`);
+    await db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
+    await logActivity('Project Deleted', `Deleted project "${project.title}"`);
 
     return res.json({ success: true, message: `Project "${project.title}" deleted successfully.` });
   } catch (err) {

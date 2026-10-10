@@ -30,7 +30,7 @@ function formatSkill(row) {
 }
 
 // GET /api/skills
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -50,9 +50,9 @@ router.get('/', (req, res) => {
 
     let rows;
     if (showAll && isAdmin) {
-      rows = db.prepare('SELECT * FROM skills ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM skills ORDER BY display_order ASC, id ASC').all();
     } else {
-      rows = db.prepare('SELECT * FROM skills WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
+      rows = await db.prepare('SELECT * FROM skills WHERE is_visible = 1 ORDER BY display_order ASC, id ASC').all();
     }
 
     return res.json({ success: true, data: rows.map(formatSkill) });
@@ -63,7 +63,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/skills (Protected)
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { number, title, description, deliverables, displayOrder, isVisible } = req.body;
 
@@ -73,7 +73,7 @@ router.post('/', authenticateToken, (req, res) => {
 
     let order = displayOrder;
     if (order === undefined || order === null) {
-      const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM skills').get()?.maxOrder || 0;
+      const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM skills').get())?.maxOrder || 0;
       order = maxOrder + 1;
     }
 
@@ -88,7 +88,7 @@ router.post('/', authenticateToken, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const result = await stmt.run(
       numStr,
       title,
       description || '',
@@ -97,9 +97,9 @@ router.post('/', authenticateToken, (req, res) => {
       isVisible === false ? 0 : 1
     );
 
-    logActivity('Skill Added', `Added skill/service "${title}"`);
+    await logActivity('Skill Added', `Added skill/service "${title}"`);
 
-    const created = db.prepare('SELECT * FROM skills WHERE id = ?').get(result.lastInsertRowid);
+    const created = await db.prepare('SELECT * FROM skills WHERE id = ?').get(result.lastInsertRowid);
     return res.status(201).json({ success: true, message: 'Skill added successfully', data: formatSkill(created) });
   } catch (err) {
     console.error('Add skill error:', err);
@@ -108,10 +108,10 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/skills/:id (Protected)
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const existing = db.prepare('SELECT * FROM skills WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM skills WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Skill not found' });
     }
@@ -138,7 +138,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       number ?? existing.number,
       title,
       description ?? existing.description,
@@ -148,9 +148,9 @@ router.put('/:id', authenticateToken, (req, res) => {
       id
     );
 
-    logActivity('Skill Updated', `Updated skill/service "${title}"`);
+    await logActivity('Skill Updated', `Updated skill/service "${title}"`);
 
-    const updated = db.prepare('SELECT * FROM skills WHERE id = ?').get(id);
+    const updated = await db.prepare('SELECT * FROM skills WHERE id = ?').get(id);
     return res.json({ success: true, message: 'Skill updated successfully', data: formatSkill(updated) });
   } catch (err) {
     console.error('Update skill error:', err);
@@ -159,19 +159,19 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/skills/:id/visibility (Protected)
-router.patch('/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const skill = db.prepare('SELECT id, title, is_visible FROM skills WHERE id = ?').get(id);
+    const skill = await db.prepare('SELECT id, title, is_visible FROM skills WHERE id = ?').get(id);
     if (!skill) {
       return res.status(404).json({ success: false, message: 'Skill not found' });
     }
 
     const newVisibility = req.body.isVisible !== undefined ? (req.body.isVisible ? 1 : 0) : (skill.is_visible ? 0 : 1);
-    db.prepare('UPDATE skills SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
+    await db.prepare('UPDATE skills SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newVisibility, id);
 
     const statusText = newVisibility ? 'Visible' : 'Hidden';
-    logActivity('Skill Visibility Changed', `Skill "${skill.title}" set to ${statusText}`);
+    await logActivity('Skill Visibility Changed', `Skill "${skill.title}" set to ${statusText}`);
 
     return res.json({
       success: true,
@@ -185,7 +185,7 @@ router.patch('/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/skills/reorder/batch (Protected)
-router.patch('/reorder/batch', authenticateToken, (req, res) => {
+router.patch('/reorder/batch', authenticateToken, async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {
@@ -195,11 +195,11 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
     const stmt = db.prepare('UPDATE skills SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     for (const item of items) {
       if (item.id && item.displayOrder !== undefined) {
-        stmt.run(Number(item.displayOrder), item.id);
+        await stmt.run(Number(item.displayOrder), item.id);
       }
     }
 
-    logActivity('Skills Reordered', `Updated display order for ${items.length} skills`);
+    await logActivity('Skills Reordered', `Updated display order for ${items.length} skills`);
     return res.json({ success: true, message: 'Skills order updated successfully.' });
   } catch (err) {
     console.error('Reorder skills error:', err);
@@ -208,16 +208,16 @@ router.patch('/reorder/batch', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/skills/:id (Protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const skill = db.prepare('SELECT id, title FROM skills WHERE id = ?').get(id);
+    const skill = await db.prepare('SELECT id, title FROM skills WHERE id = ?').get(id);
     if (!skill) {
       return res.status(404).json({ success: false, message: 'Skill not found' });
     }
 
-    db.prepare('DELETE FROM skills WHERE id = ?').run(id);
-    logActivity('Skill Deleted', `Deleted skill "${skill.title}"`);
+    await db.prepare('DELETE FROM skills WHERE id = ?').run(id);
+    await logActivity('Skill Deleted', `Deleted skill "${skill.title}"`);
 
     return res.json({ success: true, message: `Skill "${skill.title}" deleted successfully.` });
   } catch (err) {

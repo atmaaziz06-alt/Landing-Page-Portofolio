@@ -17,18 +17,13 @@ import { usePortfolioData } from './context/PortfolioDataContext';
 
 export default function App() {
   const { isAuthenticated, logout } = useAuth();
-  const { hydrateFromStorage } = usePortfolioData();
+  const { dataError, refreshData } = usePortfolioData();
 
   React.useEffect(() => {
     if (isAuthenticated) {
       logout();
     }
   }, [isAuthenticated, logout]);
-
-  React.useEffect(() => {
-    console.log('[Vezta Sync] landing mounted, re-fetch from storage');
-    hydrateFromStorage();
-  }, [hydrateFromStorage]);
 
   return (
     <div className="min-h-screen bg-[#F8EEE8] text-[#171717] selection:bg-[#F4B09D] selection:text-[#171717] flex flex-col font-sans">
@@ -37,6 +32,21 @@ export default function App() {
 
       {/* Fixed/Sticky Navigation */}
       <Navbar />
+
+      {dataError && (
+        <div role="alert" className="mx-auto mt-24 w-full max-w-5xl px-5">
+          <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 sm:flex-row sm:items-center sm:justify-between">
+            <p>Konten terbaru gagal dimuat dari server: {dataError.message}</p>
+            <button
+              type="button"
+              onClick={() => refreshData()}
+              className="shrink-0 rounded-full bg-red-700 px-4 py-2 font-medium text-white hover:bg-red-800"
+            >
+              Coba lagi
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Sections */}
       <main className="flex-grow">

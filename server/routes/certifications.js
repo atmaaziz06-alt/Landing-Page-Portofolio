@@ -28,7 +28,7 @@ function formatCertification(row) {
 }
 
 // GET /api/certifications
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true';
     let isAdmin = false;
@@ -48,9 +48,9 @@ router.get('/', (req, res) => {
 
     let rows;
     if (showAll && isAdmin) {
-      rows = db.prepare('SELECT * FROM certifications ORDER BY display_order ASC, id DESC').all();
+      rows = await db.prepare('SELECT * FROM certifications ORDER BY display_order ASC, id DESC').all();
     } else {
-      rows = db.prepare('SELECT * FROM certifications WHERE is_visible = 1 ORDER BY display_order ASC, id DESC').all();
+      rows = await db.prepare('SELECT * FROM certifications WHERE is_visible = 1 ORDER BY display_order ASC, id DESC').all();
     }
 
     return res.json({ success: true, data: rows.map(formatCertification) });
@@ -61,9 +61,9 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/certifications/:id
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
+    const row = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
     if (!row) {
       return res.status(404).json({ success: false, message: 'Certification not found' });
     }
@@ -74,7 +74,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/certifications (Protected)
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       title,
@@ -97,7 +97,7 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ success: false, message: 'Penerbit/Organisasi sertifikat wajib diisi.' });
     }
 
-    const maxOrder = db.prepare('SELECT MAX(display_order) as maxOrder FROM certifications').get()?.maxOrder || 0;
+    const maxOrder = (await db.prepare('SELECT MAX(display_order) as "maxOrder" FROM certifications').get())?.maxOrder || 0;
     const finalOrder = displayOrder !== undefined ? displayOrder : maxOrder + 1;
 
     const stmt = db.prepare(`
@@ -108,7 +108,7 @@ router.post('/', authenticateToken, (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const result = await stmt.run(
       title.trim(),
       issuer.trim(),
       issueDate || '',
@@ -123,9 +123,9 @@ router.post('/', authenticateToken, (req, res) => {
     );
 
     const newId = result.lastInsertRowid;
-    logActivity('Create Certification', `Created certification: ${title} from ${issuer}`);
+    await logActivity('Create Certification', `Created certification: ${title} from ${issuer}`);
 
-    const newRow = db.prepare('SELECT * FROM certifications WHERE id = ?').get(newId);
+    const newRow = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(newId);
     return res.status(201).json({ success: true, message: 'Sertifikasi berhasil ditambahkan', data: formatCertification(newRow) });
   } catch (err) {
     console.error('Create certification error:', err);
@@ -134,7 +134,7 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/certifications/:id (Protected)
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const {
       title,
@@ -150,7 +150,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       isVisible
     } = req.body;
 
-    const existing = db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Certification not found' });
     }
@@ -172,7 +172,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       WHERE id = ?
     `);
 
-    stmt.run(
+    await stmt.run(
       title || existing.title,
       issuer || existing.issuer,
       issueDate !== undefined ? issueDate : existing.issue_date,
@@ -187,8 +187,8 @@ router.put('/:id', authenticateToken, (req, res) => {
       req.params.id
     );
 
-    logActivity('Update Certification', `Updated certification: ${title || existing.title}`);
-    const updated = db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
+    await logActivity('Update Certification', `Updated certification: ${title || existing.title}`);
+    const updated = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
     return res.json({ success: true, message: 'Sertifikasi berhasil diperbarui', data: formatCertification(updated) });
   } catch (err) {
     console.error('Update certification error:', err);
@@ -197,15 +197,15 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // PATCH /api/certifications/:id/visibility (Protected)
-router.patch('/:id/visibility', authenticateToken, (req, res) => {
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const { isVisible } = req.body;
-    const existing = db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Certification not found' });
     }
 
-    db.prepare('UPDATE certifications SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    await db.prepare('UPDATE certifications SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .run(isVisible ? 1 : 0, req.params.id);
 
     return res.json({ success: true, message: 'Status visibilitas berhasil diubah' });
@@ -215,7 +215,7 @@ router.patch('/:id/visibility', authenticateToken, (req, res) => {
 });
 
 // POST /api/certifications/reorder/batch (Protected)
-router.post('/reorder/batch', authenticateToken, (req, res) => {
+router.post('/reorder/batch', authenticateToken, async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {
@@ -224,7 +224,7 @@ router.post('/reorder/batch', authenticateToken, (req, res) => {
 
     for (const item of items) {
       if (item.id && typeof item.displayOrder === 'number') {
-        db.prepare('UPDATE certifications SET display_order = ? WHERE id = ?')
+        await db.prepare('UPDATE certifications SET display_order = ? WHERE id = ?')
           .run(item.displayOrder, item.id);
       }
     }
@@ -236,15 +236,15 @@ router.post('/reorder/batch', authenticateToken, (req, res) => {
 });
 
 // DELETE /api/certifications/:id (Protected)
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const existing = db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
+    const existing = await db.prepare('SELECT * FROM certifications WHERE id = ?').get(req.params.id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Certification not found' });
     }
 
-    db.prepare('DELETE FROM certifications WHERE id = ?').run(req.params.id);
-    logActivity('Delete Certification', `Deleted certification: ${existing.title}`);
+    await db.prepare('DELETE FROM certifications WHERE id = ?').run(req.params.id);
+    await logActivity('Delete Certification', `Deleted certification: ${existing.title}`);
 
     return res.json({ success: true, message: 'Sertifikasi berhasil dihapus' });
   } catch (err) {
