@@ -71,9 +71,27 @@ async function callSupabaseRpc(functionName, parameters) {
   if (!response.ok) {
     const error = new Error(payload?.message || payload?.details || `Supabase request failed (${response.status}).`);
     error.status = response.status;
+    error.code = payload?.code;
     throw error;
   }
   return payload;
+}
+
+function describeSupabaseFailure(error) {
+  const code = error?.code;
+  if (error?.status === 401 || error?.status === 403) {
+    return 'Supabase rejected the server key. Verify SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in this Vercel environment.';
+  }
+  if (error?.status === 404 || code === 'PGRST202' || code === 'PGRST203') {
+    return 'Supabase CMS RPC functions were not found. Apply the CMS migration, then redeploy or wait for the Supabase API schema cache to refresh.';
+  }
+  if (code === '42P01' || /relation .* does not exist/i.test(error?.message || '')) {
+    return 'Supabase CMS tables are missing. Apply the complete CMS migration.';
+  }
+  if (error?.name === 'TypeError' || /fetch failed|ENOTFOUND|ECONNREFUSED|Invalid URL/i.test(error?.message || '')) {
+    return 'Supabase could not be reached. Check SUPABASE_URL and the project network status.';
+  }
+  return 'Supabase initialization failed. Check the Vercel function logs for the database error and verify the CMS migration.';
 }
 
 async function supabaseQuery(sql, params, mode) {
@@ -148,9 +166,13 @@ export async function initDB() {
       } catch (error) {
         databaseStatus = {
           ready: false,
-          message: 'Supabase is not ready. Apply the database migration and verify the Supabase service configuration.'
+          message: describeSupabaseFailure(error)
         };
-        console.error(`[DB] ${databaseStatus.message}`, error.message);
+        console.error('[DB] Supabase initialization failed.', {
+          status: error?.status,
+          code: error?.code,
+          message: error?.message
+        });
       }
       return databaseStatus;
     }

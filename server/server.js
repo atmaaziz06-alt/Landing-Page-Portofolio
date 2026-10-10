@@ -47,9 +47,12 @@ const apiAliases = [
   '/contact', '/settings', '/upload', '/stats', '/events', '/certifications',
   '/content-history'
 ];
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const isApiRequest = req.path.startsWith('/api') || req.path === '/health' ||
     apiAliases.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`));
+  if (isApiRequest && !databaseStatus.ready && process.env.VERCEL) {
+    await initDB();
+  }
   if (isApiRequest && !databaseStatus.ready) {
     return res.status(503).json({
       success: false,
