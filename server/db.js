@@ -49,7 +49,7 @@ if (DatabaseSync) {
   }
 }
 
-const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '');
+const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '');
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const useSupabase = Boolean(process.env.VERCEL);
 
@@ -82,16 +82,31 @@ async function callSupabaseRpc(functionName, parameters) {
     throw new Error('Set SUPABASE_SERVICE_ROLE_KEY to the Supabase service_role key in Vercel.');
   }
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+  const requestUrl = `${supabaseUrl}/rest/v1/rpc/${functionName}`;
+  const requestOptions = {
     method: 'POST',
-    signal: AbortSignal.timeout(10000),
     headers: {
       apikey: supabaseServiceRoleKey,
       Authorization: `Bearer ${supabaseServiceRoleKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(parameters)
-  });
+  };
+
+  let response;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await fetch(requestUrl, {
+        ...requestOptions,
+        signal: AbortSignal.timeout(10000)
+      });
+      break;
+    } catch (error) {
+      if (attempt > 0 || error?.cause?.code !== 'EAI_AGAIN') throw error;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+  }
+
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const error = new Error(payload?.message || payload?.details || `Supabase request failed (${response.status}).`);
@@ -117,8 +132,11 @@ function describeSupabaseFailure(error) {
   if (error?.name === 'TimeoutError' || causeCode === 'ETIMEDOUT') {
     return 'Connection to Supabase timed out. Verify the Supabase project is active and reachable from Vercel.';
   }
-  if (causeCode === 'ENOTFOUND' || causeCode === 'EAI_AGAIN') {
-    return 'The hostname in SUPABASE_URL could not be resolved. Copy the HTTPS Project URL from Supabase settings; do not use a dashboard or database connection URL.';
+  if (causeCode === 'ENOTFOUND') {
+    return 'Vercel could not resolve the Supabase hostname configured for this deployment. Verify that the deployment uses the expected HTTPS Project URL, then redeploy if you changed the environment variable.';
+  }
+  if (causeCode === 'EAI_AGAIN') {
+    return 'Vercel could not resolve the Supabase hostname after a retry. This may be a temporary DNS issue; retry shortly, and verify the deployment uses the expected HTTPS Project URL if it persists.';
   }
   if (causeCode === 'ECONNREFUSED' || causeCode === 'ECONNRESET') {
     return 'The Supabase endpoint refused or reset the connection. Verify SUPABASE_URL and that the Supabase project is active.';
@@ -207,6 +225,8 @@ export async function initDB() {
         console.error('[DB] Supabase initialization failed.', {
           status: error?.status,
           code: error?.code,
+          causeCode: error?.cause?.code,
+          hostname: new URL(supabaseUrl).hostname,
           message: error?.message
         });
       }

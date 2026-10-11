@@ -31,6 +31,9 @@ writes.
    as a `VITE_*` variable or expose it to the browser.
 3. Deploy/redeploy the Vercel application. On first initialization the app seeds empty CMS tables
    with the repository's initial portfolio content and admin account settings.
+4. Verify the deployment at `/api/health`. A `503` response includes the initialization error;
+   for DNS failures, Vercel function logs report the configured hostname and DNS error code without
+   exposing the service-role key.
 
 Local development continues to use `server/portfolio.db` with Node.js 22.13 or newer.
 
