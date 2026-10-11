@@ -5,7 +5,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_vezta_admin_jwt_key_2026_x89a';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function formatContact(row) {
   if (!row) return null;

@@ -433,7 +433,10 @@ async function seedSupabaseData() {
   const withTimestamps = (row) => ({ ...row, created_at: timestamp, updated_at: timestamp });
   const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
   const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('Set ADMIN_DEFAULT_PASSWORD before initializing the Supabase CMS.');
+  }
 
   const seed = {
     users: [withTimestamps({
@@ -607,8 +610,11 @@ function seedInitialData() {
   if (userCount === 0) {
     const adminEmail = process.env.ADMIN_EMAIL || 'atmaaziz06@gmail.com';
     const adminUsername = process.env.ADMIN_USERNAME || 'atmaaziz06';
-    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Albassam06';
-    const passwordHash = bcrypt.hashSync(defaultPassword, 10);
+    const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('Set ADMIN_DEFAULT_PASSWORD before initializing the local CMS.');
+    }
+    const passwordHash = bcrypt.hashSync(adminPassword, 10);
 
     const insertUser = nativeDb.prepare(`
       INSERT INTO users (username, email, password_hash, name, role)

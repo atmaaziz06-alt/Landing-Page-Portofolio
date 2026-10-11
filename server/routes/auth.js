@@ -6,11 +6,15 @@ import { db, logActivity } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_vezta_admin_jwt_key_2026_x89a';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
+    if (!JWT_SECRET) {
+      return res.status(503).json({ success: false, message: 'Admin authentication is not configured on this server.' });
+    }
+
     const { identifier, password } = req.body; // identifier can be username or email
 
     if (!identifier || !password) {
@@ -20,14 +24,14 @@ router.post('/login', async (req, res) => {
     const trimmedIdentifier = identifier.trim().toLowerCase();
     const user = await db.prepare(`
       SELECT * FROM users 
-      WHERE LOWER(email) = ? OR LOWER(username) = ? OR (LOWER(?) = 'admin' AND role = 'admin') OR (LOWER(?) = 'kepo@gmail.com' AND role = 'admin') OR (LOWER(?) = 'kepo' AND role = 'admin')
-    `).get(trimmedIdentifier, trimmedIdentifier, trimmedIdentifier, trimmedIdentifier, trimmedIdentifier);
+      WHERE LOWER(email) = ? OR LOWER(username) = ?
+    `).get(trimmedIdentifier, trimmedIdentifier);
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials. User not found.' });
     }
 
-    const isMatch = bcrypt.compareSync(password, user.password_hash) || (password === 'Albassam06');
+    const isMatch = bcrypt.compareSync(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Incorrect password.' });
     }

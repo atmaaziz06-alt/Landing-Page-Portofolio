@@ -5,6 +5,9 @@ This application uses React 19, Vite, React Router, an Express API, and SQLite i
 ## Local development
 
 Use Node.js 22.13 or newer so the built-in `node:sqlite` database is available.
+Configure `JWT_SECRET` and `ADMIN_DEFAULT_PASSWORD` in `.env` before starting the server.
+Use a unique, randomly generated JWT secret (at least 32 bytes) and a strong admin password.
+`ADMIN_DEFAULT_PASSWORD` is only used when initializing an empty database.
 
 ```sh
 npm install
@@ -28,7 +31,8 @@ writes.
    the Supabase SQL Editor (or your normal migration workflow).
 2. In Vercel project settings, set `SUPABASE_URL` to the project's API URL and
    `SUPABASE_SERVICE_ROLE_KEY` to its service-role key. Keep that key server-side; do not use it
-   as a `VITE_*` variable or expose it to the browser.
+   as a `VITE_*` variable or expose it to the browser. Also set a unique `JWT_SECRET` and a strong
+   `ADMIN_DEFAULT_PASSWORD` for first-time admin seeding; never reuse the local `.env` values.
 3. Deploy/redeploy the Vercel application. On first initialization the app seeds empty CMS tables
    with the repository's initial portfolio content and admin account settings.
 4. Verify the deployment at `/api/health`. A `503` response includes the initialization error;
