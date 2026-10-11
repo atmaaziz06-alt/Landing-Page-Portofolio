@@ -30,8 +30,15 @@ import {
 } from 'lucide-react';
 import ImageCropModal from '../components/ImageCropModal';
 import { usePortfolioData } from '../../context/PortfolioDataContext';
+import { AI_VIDEO_CATEGORY, isVideoUrl } from '../../utils/media';
 
 const MAX_GALLERY_IMAGE_SIZE = 4 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+
+function isVideoFile(file) {
+  return file.type === 'video/mp4' || file.type === 'video/webm' ||
+    (!file.type && /\.(mp4|webm)$/i.test(file.name));
+}
 
 export default function ProjectsPage() {
   const toast = useToast();
@@ -80,6 +87,7 @@ export default function ProjectsPage() {
     displayOrder: 1,
     isVisible: true
   });
+  const isAiVideoProject = formData.category === AI_VIDEO_CATEGORY;
 
   const defaultCategories = ['Desain Grafis', 'Ai Video Content', 'UI/UX', 'Branding', 'Digital Marketing', 'Other'];
   const [customCategories, setCustomCategories] = useState(() => {
@@ -284,6 +292,17 @@ export default function ProjectsPage() {
   // Thumbnail file upload
   const handleThumbnailUpload = async (file) => {
     if (!file) return;
+    if (isAiVideoProject !== isVideoFile(file)) {
+      toast.error(isAiVideoProject
+        ? 'Kategori Ai Video Content hanya menerima video MP4 atau WebM.'
+        : 'Kategori ini hanya menerima gambar sebagai thumbnail.');
+      return;
+    }
+    if (isAiVideoProject && file.size > MAX_VIDEO_SIZE) {
+      toast.error('Ukuran video thumbnail maksimal 100 MB.');
+      return;
+    }
+
     setUploadingThumb(true);
     try {
       const res = await api.uploadFile(file);
@@ -307,10 +326,20 @@ export default function ProjectsPage() {
     const files = Array.from(fileList || []);
     if (files.length === 0) return;
 
-    const oversizedFiles = files.filter((file) => file.size > MAX_GALLERY_IMAGE_SIZE);
+    const invalidFiles = files.filter((file) => isAiVideoProject !== isVideoFile(file));
+    if (invalidFiles.length > 0) {
+      toast.error(isAiVideoProject
+        ? 'Kategori Ai Video Content hanya menerima video MP4 atau WebM.'
+        : 'Kategori ini hanya menerima gambar untuk galeri.');
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      return;
+    }
+
+    const maxFileSize = isAiVideoProject ? MAX_VIDEO_SIZE : MAX_GALLERY_IMAGE_SIZE;
+    const oversizedFiles = files.filter((file) => file.size > maxFileSize);
     if (oversizedFiles.length > 0) {
       const names = oversizedFiles.map((file) => file.name).join(', ');
-      toast.error(`Ukuran setiap gambar maksimal 4 MB. Kompres gambar berikut lalu pilih ulang: ${names}`);
+      toast.error(`Ukuran maksimal tiap ${isAiVideoProject ? 'video adalah 100 MB' : 'gambar adalah 4 MB'}. Pilih ulang file berikut: ${names}`);
       if (galleryInputRef.current) galleryInputRef.current.value = '';
       return;
     }
@@ -325,7 +354,7 @@ export default function ProjectsPage() {
         try {
           const res = await api.uploadFile(file);
           if (!res?.success || !res.url) {
-            throw new Error(res?.message || 'Server tidak mengembalikan URL gambar.');
+            throw new Error(res?.message || 'Server tidak mengembalikan URL media.');
           }
 
           setFormData((prev) => ({
@@ -344,10 +373,10 @@ export default function ProjectsPage() {
       }
 
       if (uploaded > 0) {
-        toast.success(`${uploaded} dari ${files.length} gambar galeri berhasil diunggah.`);
+        toast.success(`${uploaded} dari ${files.length} ${isAiVideoProject ? 'video' : 'gambar'} galeri berhasil diunggah.`);
       }
       if (failedFiles.length > 0) {
-        toast.error(`Gagal mengunggah ${failedFiles.length} gambar: ${failedFiles.join('; ')}`);
+        toast.error(`Gagal mengunggah ${failedFiles.length} ${isAiVideoProject ? 'video' : 'gambar'}: ${failedFiles.join('; ')}`);
       }
     } finally {
       setUploadingGallery(false);
@@ -368,6 +397,20 @@ export default function ProjectsPage() {
     if (!formData.title.trim()) {
       toast.error('Judul Project wajib diisi.');
       return;
+    }
+    if (isAiVideoProject) {
+      const galleryItems = formData.images.length > 0 ? formData.images : [formData.image];
+      const existingMedia = editingItem?.category === AI_VIDEO_CATEGORY
+        ? new Set([editingItem.image, ...(Array.isArray(editingItem.images) ? editingItem.images : [])].filter(Boolean))
+        : new Set();
+      if (formData.image && !isVideoUrl(formData.image) && !existingMedia.has(formData.image)) {
+        toast.error('Thumbnail kategori Ai Video Content harus berupa video MP4 atau WebM.');
+        return;
+      }
+      if (galleryItems.some((url) => url && !isVideoUrl(url) && !existingMedia.has(url))) {
+        toast.error('Semua media galeri kategori Ai Video Content harus berupa video MP4 atau WebM.');
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -657,12 +700,25 @@ export default function ProjectsPage() {
               <div>
                 {/* Thumbnail Preview Aspect Ratio */}
                 <div className="relative w-full aspect-[4/3] rounded-[18px] overflow-hidden bg-[#F6E7DF] mb-3 flex items-center justify-center group">
-                  <img
-                    src={item.image || '/assets/images/placeholder.png'}
-                    alt={item.title}
-                    className="w-full h-full object-contain"
-                    onError={(e) => { e.target.src = '/assets/images/hero.png'; }}
-                  />
+                  {isVideoUrl(item.image) ? (
+                    <video
+                      src={item.image}
+                      aria-label={item.title}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={item.image || '/assets/images/placeholder.png'}
+                      alt={item.title}
+                      className="w-full h-full object-contain"
+                      onError={(e) => { e.target.src = '/assets/images/hero.png'; }}
+                    />
+                  )}
 
                   {/* Category Badge */}
                   <div className="absolute top-3 right-3 z-10">
@@ -918,14 +974,14 @@ export default function ProjectsPage() {
               <div className="p-4 rounded-2xl bg-white/70 border border-[rgba(23,23,23,0.08)] space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-[#171717] uppercase tracking-wider">
-                    Foto Thumbnail Utama
+                    {isAiVideoProject ? 'Video Thumbnail Utama' : 'Foto Thumbnail Utama'}
                   </label>
                   <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white hover:bg-[#FBEFE9] border border-[rgba(23,23,23,0.1)] text-xs font-medium text-[#171717] cursor-pointer shadow-2xs transition-colors">
                     {uploadingThumb ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-[#E66F52]" />}
                     <span>{uploadingThumb ? 'Mengunggah...' : 'Upload Thumbnail'}</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={isAiVideoProject ? 'video/mp4,video/webm' : 'image/*'}
                       className="hidden"
                       onChange={(e) => handleThumbnailUpload(e.target.files?.[0])}
                       disabled={uploadingThumb}
@@ -936,7 +992,18 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-4">
                   {formData.image ? (
                     <div className="relative w-36 aspect-[4/3] rounded-xl overflow-hidden border border-[rgba(23,23,23,0.1)] bg-[#F6E7DF]">
-                      <img src={formData.image} alt="Thumbnail preview" className="w-full h-full object-contain" />
+                      {isVideoUrl(formData.image) ? (
+                        <video
+                          src={formData.image}
+                          aria-label="Video thumbnail preview"
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <img src={formData.image} alt="Thumbnail preview" className="w-full h-full object-contain" />
+                      )}
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, image: '' })}
@@ -958,11 +1025,13 @@ export default function ProjectsPage() {
                       type="text"
                       value={formData.image}
                       onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                      placeholder="Atau masukkan URL / path gambar..."
+                      placeholder={isAiVideoProject ? 'Atau masukkan URL / path video...' : 'Atau masukkan URL / path gambar...'}
                       className="w-full px-3 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-xs focus:border-[#E66F52] focus:outline-none"
                     />
                     <p className="text-[11px] text-[#5F5A57] mt-1">
-                      Gambar ditampilkan utuh tanpa terpotong pada cover card.
+                    {isAiVideoProject
+                      ? 'Unggah video MP4 atau WebM, maksimal 100 MB.'
+                      : 'Gambar ditampilkan utuh tanpa terpotong pada cover card.'}
                     </p>
                   </div>
                 </div>
@@ -973,7 +1042,7 @@ export default function ProjectsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="block text-xs font-semibold text-[#171717] uppercase tracking-wider">
-                      Galeri Gambar Tambahan (Multi-Slide)
+                      {isAiVideoProject ? 'Galeri Video Tambahan (Multi-Slide)' : 'Galeri Gambar Tambahan (Multi-Slide)'}
                     </label>
                     <p className="text-[11px] text-[#5F5A57]">
                       Digunakan pada carousel / popup detail modal proyek.
@@ -985,12 +1054,12 @@ export default function ProjectsPage() {
                     <span>
                       {uploadingGallery
                         ? `Mengunggah ${galleryUploadProgress?.processed || 0}/${galleryUploadProgress?.total || 0}...`
-                        : 'Upload Banyak Gambar'}
+                        : isAiVideoProject ? 'Upload Banyak Video' : 'Upload Banyak Gambar'}
                     </span>
                     <input
                       ref={galleryInputRef}
                       type="file"
-                      accept="image/*"
+                      accept={isAiVideoProject ? 'video/mp4,video/webm' : 'image/*'}
                       multiple
                       className="hidden"
                       onChange={(e) => handleGalleryUpload(e.target.files)}
@@ -999,14 +1068,27 @@ export default function ProjectsPage() {
                   </label>
                 </div>
                 <p className="text-[11px] text-[#5F5A57]">
-                  Pilih beberapa foto sekaligus. Gambar diunggah satu per satu; ukuran maksimal tiap gambar 4 MB.
+                  {isAiVideoProject
+                    ? 'Pilih beberapa video MP4 atau WebM sekaligus. Video diunggah satu per satu; ukuran maksimal tiap video 100 MB.'
+                    : 'Pilih beberapa foto sekaligus. Gambar diunggah satu per satu; ukuran maksimal tiap gambar 4 MB.'}
                 </p>
 
                 {formData.images.length > 0 && (
                   <div className="flex flex-wrap gap-2.5 pt-2">
                     {formData.images.map((imgUrl, idx) => (
                       <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group">
-                        <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-contain" />
+                        {isVideoUrl(imgUrl) ? (
+                          <video
+                            src={imgUrl}
+                            aria-label={`Video galeri ${idx + 1}`}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-full h-full object-contain" />
+                        )}
                         <button
                           type="button"
                           onClick={() => removeGalleryImage(idx)}

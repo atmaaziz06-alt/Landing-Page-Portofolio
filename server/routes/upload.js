@@ -14,6 +14,7 @@ const useSupabaseStorage = Boolean(process.env.VERCEL);
 const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '');
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const storageBucket = 'portfolio-uploads';
+const MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
 const uploadDir = process.env.VERCEL
   ? path.resolve(os.tmpdir(), 'uploads')
   : path.resolve(__dirname, '../../public/uploads');
@@ -43,21 +44,31 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp|svg|gif|pdf/;
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
   const mime = file.mimetype.toLowerCase();
+  const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif', 'pdf', 'mp4', 'webm']);
+  const allowedMimeTypes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/svg+xml',
+    'image/gif',
+    'application/pdf',
+    'video/mp4',
+    'video/webm'
+  ]);
 
-  if (allowedTypes.test(ext) || allowedTypes.test(mime)) {
+  if (allowedExtensions.has(ext) || allowedMimeTypes.has(mime)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files (JPG, PNG, WebP, SVG, GIF) and PDF are allowed.'));
+    cb(new Error('Only image files (JPG, PNG, WebP, SVG, GIF), MP4/WebM videos, and PDF are allowed.'));
   }
 };
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 15 * 1024 * 1024 } // 15MB
+  limits: { fileSize: MAX_UPLOAD_SIZE }
 });
 
 async function persistUploadedFile(file) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import TiltCard from './TiltCard';
+import { isVideoUrl } from '../utils/media';
 
 export default function ProjectCard({ project, onClick, className = '' }) {
   return (
@@ -21,7 +22,18 @@ export default function ProjectCard({ project, onClick, className = '' }) {
     >
       {/* Image Container 4:3 with overflow hidden */}
       <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-[#F6E7DF] mb-4 flex items-center justify-center">
-        {project.category === 'Desain Grafis' ? (
+        {isVideoUrl(project.image) ? (
+          <video
+            src={project.image}
+            aria-label={project.title}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="w-full h-full object-contain"
+          />
+        ) : project.category === 'Desain Grafis' ? (
           <>
             {/* Ambient blurred backdrop so the landscape frame stays rich and filled */}
             <img

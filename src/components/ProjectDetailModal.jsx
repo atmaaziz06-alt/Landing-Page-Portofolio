@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ArrowUpRight, CheckCircle2, Calendar, User, Layers, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { isVideoUrl } from '../utils/media';
 
 export default function ProjectDetailModal({ project, onClose }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -95,7 +96,17 @@ export default function ProjectDetailModal({ project, onClose }) {
         {/* E-COMMERCE STYLE INTERACTIVE SHOWCASE GALLERY                */}
         {/* ============================================================ */}
         <div className="relative w-full h-[300px] sm:h-[460px] md:h-[500px] rounded-[22px] overflow-hidden border border-[rgba(23,23,23,0.08)] shadow-subtle bg-[#171717]/5 flex items-center justify-center select-none group/gallery mb-3">
-          {project.category === 'Desain Grafis' ? (
+          {isVideoUrl(currentImage) ? (
+            <video
+              key={currentImage}
+              src={currentImage}
+              aria-label={`${project.title} video ${activeImageIndex + 1}`}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-contain"
+            />
+          ) : project.category === 'Desain Grafis' ? (
             <>
               {/* Ambient blurred backdrop so frame matches active slide */}
               <img
@@ -168,11 +179,22 @@ export default function ProjectDetailModal({ project, onClose }) {
                     : 'border-[rgba(23,23,23,0.12)] opacity-50 hover:opacity-90 hover:border-black/30'
                 }`}
               >
-                <img
-                  src={imgSrc}
-                  alt={`${project.title} thumbnail ${idx + 1}`}
-                  className="w-full h-full object-contain"
-                />
+                {isVideoUrl(imgSrc) ? (
+                  <video
+                    src={imgSrc}
+                    aria-label={`${project.title} video thumbnail ${idx + 1}`}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full object-contain pointer-events-none"
+                  />
+                ) : (
+                  <img
+                    src={imgSrc}
+                    alt={`${project.title} thumbnail ${idx + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                )}
               </button>
             ))}
           </div>
