@@ -418,26 +418,34 @@ export default function CertificationsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
+    const deletedCertification = deleteTarget;
     setIsDeleting(true);
     try {
-      const res = await api.deleteCertification(deleteTarget.id);
-      if (res && res.success) {
-        toast.success('Sertifikasi berhasil dihapus.');
-        const remaining = certifications.filter((c) => c.id !== deleteTarget.id);
-        setCertifications(remaining);
-        syncCache(remaining);
+      const res = await api.deleteCertification(deletedCertification.id);
+      if (!res?.success) {
+        throw new Error(res?.message || 'Gagal menghapus sertifikasi dari server.');
+      }
+
+      const remaining = certifications.filter((c) => c.id !== deletedCertification.id);
+      setCertifications(remaining);
+      syncCache(remaining);
+      setDeleteTarget(null);
+      toast.success('Sertifikasi berhasil dihapus.');
+
+      try {
         await publishUpdate({
           section: 'Sertifikasi',
           sectionKey: 'certifications',
           action: 'Hapus',
-          details: deleteTarget.title,
+          details: deletedCertification.title,
           patch: { certifications: remaining }
         });
-        setDeleteTarget(null);
-        await loadCertifications();
-      } else {
-        throw new Error(res?.message || 'Gagal menghapus sertifikasi dari server.');
+      } catch (historyError) {
+        console.error('Sertifikasi terhapus, tetapi gagal menyimpan histori:', historyError);
+        toast.error(`Sertifikasi terhapus, tetapi histori gagal disimpan: ${historyError.message}`);
       }
+
+      await loadCertifications();
     } catch (err) {
       toast.error('Gagal menghapus sertifikasi: ' + err.message);
     } finally {
@@ -1042,7 +1050,7 @@ export default function CertificationsPage() {
         cancelText="Batal"
         isLoading={isDeleting}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
+        onClose={() => setDeleteTarget(null)}
       />
 
       {/* Image Crop Modal for Certificate */}

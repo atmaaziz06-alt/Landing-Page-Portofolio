@@ -821,7 +821,7 @@ export default function EventsPage() {
         cancelText="Batal"
         isLoading={isDeleting}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
+        onClose={() => setDeleteTarget(null)}
       />
 
       {/* Image Crop Modal for Event Documentation */}
