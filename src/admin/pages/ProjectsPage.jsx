@@ -1,5 +1,5 @@
 // src/admin/pages/ProjectsPage.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -48,6 +48,8 @@ export default function ProjectsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingThumb, setUploadingThumb] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [galleryUploadProgress, setGalleryUploadProgress] = useState(null);
+  const galleryInputRef = useRef(null);
 
   // Delete Modal State
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -300,21 +302,39 @@ export default function ProjectsPage() {
 
   // Multi-image gallery upload
   const handleGalleryUpload = async (fileList) => {
-    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
     setUploadingGallery(true);
+    setGalleryUploadProgress({ uploaded: 0, total: files.length });
+    let uploaded = 0;
+
     try {
-      const res = await api.uploadMultipleFiles(fileList);
-      if (res.success && res.urls) {
+      for (let index = 0; index < files.length; index += 10) {
+        const batch = files.slice(index, index + 10);
+        const res = await api.uploadMultipleFiles(batch);
+        if (!res?.success || !Array.isArray(res.urls) || res.urls.length !== batch.length) {
+          throw new Error(res?.message || 'Server tidak mengembalikan semua URL gambar.');
+        }
+
         setFormData((prev) => ({
           ...prev,
           images: [...prev.images, ...res.urls]
         }));
-        toast.success(`${res.urls.length} gambar galeri berhasil diunggah.`);
+        uploaded += res.urls.length;
+        setGalleryUploadProgress({ uploaded, total: files.length });
       }
+
+      toast.success(`${uploaded} gambar galeri berhasil diunggah.`);
     } catch (err) {
-      toast.error('Gagal mengunggah gambar galeri: ' + err.message);
+      const message = uploaded > 0
+        ? `${uploaded} gambar berhasil diunggah, tetapi sisanya gagal: ${err.message}`
+        : 'Gagal mengunggah gambar galeri: ' + err.message;
+      toast.error(message);
     } finally {
       setUploadingGallery(false);
+      setGalleryUploadProgress(null);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
     }
   };
 
@@ -944,8 +964,13 @@ export default function ProjectsPage() {
 
                   <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white hover:bg-[#FBEFE9] border border-[rgba(23,23,23,0.1)] text-xs font-medium text-[#171717] cursor-pointer shadow-2xs transition-colors">
                     {uploadingGallery ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-[#E66F52]" />}
-                    <span>{uploadingGallery ? 'Mengunggah...' : 'Upload Gambar'}</span>
+                    <span>
+                      {uploadingGallery
+                        ? `Mengunggah ${galleryUploadProgress?.uploaded || 0}/${galleryUploadProgress?.total || 0}...`
+                        : 'Upload Banyak Gambar'}
+                    </span>
                     <input
+                      ref={galleryInputRef}
                       type="file"
                       accept="image/*"
                       multiple
@@ -955,6 +980,9 @@ export default function ProjectsPage() {
                     />
                   </label>
                 </div>
+                <p className="text-[11px] text-[#5F5A57]">
+                  Pilih beberapa foto sekaligus. Jika lebih dari 10, foto akan diunggah bertahap.
+                </p>
 
                 {formData.images.length > 0 && (
                   <div className="flex flex-wrap gap-2.5 pt-2">
