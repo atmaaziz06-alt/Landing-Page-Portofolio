@@ -119,7 +119,7 @@ export default function ProjectDetailModal({ project, onClose }) {
               key={currentImage}
               src={currentImage}
               alt={`${project.title} slide ${activeImageIndex + 1}`}
-              className="w-full h-full object-cover transition-all duration-300 animate-in fade-in"
+              className="w-full h-full object-contain transition-all duration-300 animate-in fade-in"
             />
           )}
 
@@ -171,7 +171,7 @@ export default function ProjectDetailModal({ project, onClose }) {
                 <img
                   src={imgSrc}
                   alt={`${project.title} thumbnail ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </button>
             ))}

@@ -660,7 +660,7 @@ export default function ProjectsPage() {
                   <img
                     src={item.image || '/assets/images/placeholder.png'}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain"
                     onError={(e) => { e.target.src = '/assets/images/hero.png'; }}
                   />
 
@@ -936,7 +936,7 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-4">
                   {formData.image ? (
                     <div className="relative w-36 aspect-[4/3] rounded-xl overflow-hidden border border-[rgba(23,23,23,0.1)] bg-[#F6E7DF]">
-                      <img src={formData.image} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                      <img src={formData.image} alt="Thumbnail preview" className="w-full h-full object-contain" />
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, image: '' })}
@@ -962,7 +962,7 @@ export default function ProjectsPage() {
                       className="w-full px-3 py-2 rounded-xl bg-white border border-[rgba(23,23,23,0.1)] text-xs focus:border-[#E66F52] focus:outline-none"
                     />
                     <p className="text-[11px] text-[#5F5A57] mt-1">
-                      Gambar ini tampil sebagai cover card di landing page.
+                      Gambar ditampilkan utuh tanpa terpotong pada cover card.
                     </p>
                   </div>
                 </div>
@@ -1006,7 +1006,7 @@ export default function ProjectsPage() {
                   <div className="flex flex-wrap gap-2.5 pt-2">
                     {formData.images.map((imgUrl, idx) => (
                       <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group">
-                        <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                        <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-contain" />
                         <button
                           type="button"
                           onClick={() => removeGalleryImage(idx)}

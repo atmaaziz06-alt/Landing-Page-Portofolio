@@ -37,7 +37,7 @@ export default function ProjectCard({ project, onClick, className = '' }) {
               src={project.image}
               alt={project.title}
               loading="lazy"
-              className="relative z-[1] w-full h-full object-contain p-2 sm:p-2.5 transition-transform duration-500 group-hover:scale-105 drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
+              className="relative z-[1] w-full h-full object-contain p-2 sm:p-2.5 drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
               width="600"
               height="450"
             />
@@ -47,7 +47,7 @@ export default function ProjectCard({ project, onClick, className = '' }) {
             src={project.image}
             alt={project.title}
             loading="lazy"
-            className="w-full h-full object-cover img-zoom"
+            className="w-full h-full object-contain"
             width="600"
             height="450"
           />
