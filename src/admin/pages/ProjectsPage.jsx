@@ -31,6 +31,8 @@ import {
 import ImageCropModal from '../components/ImageCropModal';
 import { usePortfolioData } from '../../context/PortfolioDataContext';
 
+const MAX_GALLERY_IMAGE_SIZE = 4 * 1024 * 1024;
+
 export default function ProjectsPage() {
   const toast = useToast();
   const { publishUpdate } = usePortfolioData();
@@ -305,32 +307,48 @@ export default function ProjectsPage() {
     const files = Array.from(fileList || []);
     if (files.length === 0) return;
 
+    const oversizedFiles = files.filter((file) => file.size > MAX_GALLERY_IMAGE_SIZE);
+    if (oversizedFiles.length > 0) {
+      const names = oversizedFiles.map((file) => file.name).join(', ');
+      toast.error(`Ukuran setiap gambar maksimal 4 MB. Kompres gambar berikut lalu pilih ulang: ${names}`);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      return;
+    }
+
     setUploadingGallery(true);
-    setGalleryUploadProgress({ uploaded: 0, total: files.length });
+    setGalleryUploadProgress({ processed: 0, total: files.length });
     let uploaded = 0;
+    const failedFiles = [];
 
     try {
-      for (let index = 0; index < files.length; index += 10) {
-        const batch = files.slice(index, index + 10);
-        const res = await api.uploadMultipleFiles(batch);
-        if (!res?.success || !Array.isArray(res.urls) || res.urls.length !== batch.length) {
-          throw new Error(res?.message || 'Server tidak mengembalikan semua URL gambar.');
+      for (const file of files) {
+        try {
+          const res = await api.uploadFile(file);
+          if (!res?.success || !res.url) {
+            throw new Error(res?.message || 'Server tidak mengembalikan URL gambar.');
+          }
+
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, res.url]
+          }));
+          uploaded += 1;
+        } catch (err) {
+          failedFiles.push(`${file.name}: ${err.message}`);
         }
 
-        setFormData((prev) => ({
+        setGalleryUploadProgress((prev) => ({
           ...prev,
-          images: [...prev.images, ...res.urls]
+          processed: prev.processed + 1
         }));
-        uploaded += res.urls.length;
-        setGalleryUploadProgress({ uploaded, total: files.length });
       }
 
-      toast.success(`${uploaded} gambar galeri berhasil diunggah.`);
-    } catch (err) {
-      const message = uploaded > 0
-        ? `${uploaded} gambar berhasil diunggah, tetapi sisanya gagal: ${err.message}`
-        : 'Gagal mengunggah gambar galeri: ' + err.message;
-      toast.error(message);
+      if (uploaded > 0) {
+        toast.success(`${uploaded} dari ${files.length} gambar galeri berhasil diunggah.`);
+      }
+      if (failedFiles.length > 0) {
+        toast.error(`Gagal mengunggah ${failedFiles.length} gambar: ${failedFiles.join('; ')}`);
+      }
     } finally {
       setUploadingGallery(false);
       setGalleryUploadProgress(null);
@@ -966,7 +984,7 @@ export default function ProjectsPage() {
                     {uploadingGallery ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-[#E66F52]" />}
                     <span>
                       {uploadingGallery
-                        ? `Mengunggah ${galleryUploadProgress?.uploaded || 0}/${galleryUploadProgress?.total || 0}...`
+                        ? `Mengunggah ${galleryUploadProgress?.processed || 0}/${galleryUploadProgress?.total || 0}...`
                         : 'Upload Banyak Gambar'}
                     </span>
                     <input
@@ -981,7 +999,7 @@ export default function ProjectsPage() {
                   </label>
                 </div>
                 <p className="text-[11px] text-[#5F5A57]">
-                  Pilih beberapa foto sekaligus. Jika lebih dari 10, foto akan diunggah bertahap.
+                  Pilih beberapa foto sekaligus. Gambar diunggah satu per satu; ukuran maksimal tiap gambar 4 MB.
                 </p>
 
                 {formData.images.length > 0 && (
