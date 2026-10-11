@@ -156,25 +156,12 @@ async function supabaseQuery(sql, params, mode) {
 }
 
 const supabaseDb = {
-  isSupabase: true,
   prepare(sql) {
     return {
       get: async (...params) => supabaseQuery(sql, params, 'one'),
       all: async (...params) => supabaseQuery(sql, params, 'all'),
       run: async (...params) => supabaseQuery(sql, params, 'run')
     };
-  },
-  async saveContentSnapshot({ section, sectionKey, action, details, snapshot }) {
-    return callSupabaseRpc('cms_save_content_snapshot', {
-      p_section: section || 'Konten',
-      p_section_key: sectionKey || '',
-      p_action: action || 'Update',
-      p_details: details || '',
-      p_snapshot: snapshot
-    });
-  },
-  async restoreContentSnapshot(id) {
-    return callSupabaseRpc('cms_restore_content_snapshot', { p_history_id: id });
   }
 };
 
@@ -193,7 +180,6 @@ const unavailableDb = {
 // Local SQLite remains synchronous; callers await these methods so the same
 // route code can use the asynchronous Supabase RPC adapter in production.
 export const db = nativeDb || (useSupabase ? supabaseDb : unavailableDb);
-export const isSupabase = useSupabase;
 
 export let databaseStatus = {
   ready: Boolean(nativeDb),
@@ -411,18 +397,9 @@ export async function initDB() {
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS content_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT NOT NULL,
-        section TEXT NOT NULL,
-        section_key TEXT,
-        action TEXT NOT NULL,
-        details TEXT,
-        snapshot_json TEXT NOT NULL,
-        previous_snapshot_json TEXT
-      );
   `);
 
+  nativeDb.exec('DROP TABLE IF EXISTS content_history;');
   seedInitialData();
   databaseStatus = { ready: true, message: '' };
   return databaseStatus;

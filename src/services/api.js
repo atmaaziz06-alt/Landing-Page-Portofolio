@@ -533,44 +533,4 @@ export const api = {
     return handleResponse(res);
   },
 
-  async getContentHistory() {
-    const res = await fetch(`${API_BASE}/content-history`, {
-      headers: getAuthHeaders(),
-      cache: 'no-store'
-    });
-    return handleResponse(res);
-  },
-
-  async createContentHistory(entry) {
-    const res = await fetch(`${API_BASE}/content-history`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(entry)
-    });
-    return handleResponse(res);
-  },
-
-  async restoreContentHistory(id) {
-    const res = await fetch(`${API_BASE}/content-history/${encodeURIComponent(id)}/restore`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    });
-    return handleResponse(res);
-  },
-
-  async deleteContentHistory(id) {
-    const res = await fetch(`${API_BASE}/content-history/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    return handleResponse(res);
-  },
-
-  async deleteOldestContentHistory(count) {
-    const res = await fetch(`${API_BASE}/content-history/oldest?count=${encodeURIComponent(count)}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    return handleResponse(res);
-  }
 };

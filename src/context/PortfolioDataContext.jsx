@@ -148,7 +148,7 @@ export function PortfolioDataProvider({ children }) {
       id: entry.id,
       section: entry.section,
       action: entry.action,
-      timestamp: entry.timestamp
+      timestamp: published.updatedAt
     });
     return entry;
   }, [applyPublishedContent]);

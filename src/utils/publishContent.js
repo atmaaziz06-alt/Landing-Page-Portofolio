@@ -78,15 +78,12 @@ export async function publishContentUpdate({
     updatedAt: new Date().toISOString()
   };
 
-  const response = await api.createContentHistory({
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     section,
     sectionKey,
     action,
     details,
     snapshot
-  });
-  if (!response?.success || !response.data) {
-    throw new Error(response?.message || 'Gagal menyimpan histori konten ke database.');
-  }
-  return response.data;
+  };
 }

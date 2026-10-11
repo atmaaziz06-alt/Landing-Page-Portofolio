@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { formatUpdateTime, subscribeContentUpdates } from '../../utils/contentStore';
 import {
   FolderKanban,
   Briefcase,
@@ -13,7 +12,6 @@ import {
   EyeOff,
   Plus,
   ArrowRight,
-  Clock,
   Sparkles,
   Loader2,
   RefreshCw
@@ -24,19 +22,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [contentHistory, setContentHistory] = useState([]);
-
-  const fetchContentHistory = async () => {
-    try {
-      const response = await api.getContentHistory();
-      if (!response?.success || !Array.isArray(response.data)) {
-        throw new Error(response?.message || 'Format histori dari server tidak valid.');
-      }
-      setContentHistory(response.data);
-    } catch (err) {
-      console.error('Failed to load content history:', err);
-    }
-  };
 
   const fetchStats = async () => {
     try {
@@ -54,11 +39,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
-
-  useEffect(() => {
-    void fetchContentHistory();
-    return subscribeContentUpdates(fetchContentHistory);
   }, []);
 
   const handleRefresh = () => {
@@ -255,69 +235,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* HISTORI UPDATE */}
-      <div className="rounded-[28px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-6 sm:p-7 shadow-xs">
-        <div className="flex items-center justify-between mb-5 gap-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#E66F52]" />
-            <h2 className="text-base font-semibold text-[#171717]">Histori Update</h2>
-          </div>
-          <Link
-            to="/admin/history"
-            className="text-xs font-medium text-[#E66F52] hover:underline inline-flex items-center gap-1"
-          >
-            Lihat semua
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {contentHistory.length === 0 ? (
-          <p className="text-xs sm:text-sm text-[#5F5A57] italic py-4 text-center">
-            Belum ada histori update. Perubahan yang disimpan dari halaman admin akan muncul di sini.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-left text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-wider text-[#5F5A57] border-b border-[rgba(23,23,23,0.08)]">
-                  <th className="py-2 pr-3 font-semibold">Waktu Update</th>
-                  <th className="py-2 pr-3 font-semibold">Bagian yang diubah</th>
-                  <th className="py-2 pr-3 font-semibold">Detail</th>
-                  <th className="py-2 font-semibold text-right">Versi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[rgba(23,23,23,0.06)]">
-                {contentHistory.slice(0, 8).map((item, index) => (
-                  <tr key={item.id}>
-                    <td className="py-3 pr-3 whitespace-nowrap text-[#171717] font-medium">
-                      {formatUpdateTime(item.timestamp)}
-                    </td>
-                    <td className="py-3 pr-3">
-                      {item.section || 'Konten'}
-                      {index === 0 && (
-                        <span className="ml-2 text-[10px] font-semibold text-[#E66F52]">Terbaru</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-3 text-[#5F5A57]">
-                      {item.action}
-                      {item.details ? ` — ${item.details}` : ''}
-                    </td>
-                    <td className="py-3 text-right">
-                      <Link
-                        to="/admin/history"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#E66F52] hover:underline"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Lihat
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

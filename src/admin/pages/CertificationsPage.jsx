@@ -440,9 +440,9 @@ export default function CertificationsPage() {
           details: deletedCertification.title,
           patch: { certifications: remaining }
         });
-      } catch (historyError) {
-        console.error('Sertifikasi terhapus, tetapi gagal menyimpan histori:', historyError);
-        toast.error(`Sertifikasi terhapus, tetapi histori gagal disimpan: ${historyError.message}`);
+      } catch (publishError) {
+        console.error('Sertifikasi terhapus, tetapi konten publik gagal diperbarui:', publishError);
+        toast.error(`Sertifikasi terhapus, tetapi tampilan publik gagal diperbarui: ${publishError.message}`);
       }
 
       await loadCertifications();

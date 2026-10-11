@@ -22,7 +22,6 @@ import ContactPage from './admin/pages/ContactPage.jsx';
 import SettingsPage from './admin/pages/SettingsPage.jsx';
 import EventsPage from './admin/pages/EventsPage.jsx';
 import CertificationsPage from './admin/pages/CertificationsPage.jsx';
-import HistoryPage from './admin/pages/HistoryPage.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -49,7 +48,6 @@ createRoot(document.getElementById('root')).render(
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="history" element={<HistoryPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="experience" element={<ExperiencePage />} />
                   <Route path="projects" element={<ProjectsPage />} />

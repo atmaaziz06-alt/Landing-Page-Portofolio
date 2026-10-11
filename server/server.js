@@ -19,7 +19,6 @@ import uploadRoutes from './routes/upload.js';
 import statsRoutes from './routes/stats.js';
 import eventsRoutes from './routes/events.js';
 import certificationsRoutes from './routes/certifications.js';
-import contentHistoryRoutes from './routes/contentHistory.js';
 
 if (!process.env.VERCEL) dotenv.config();
 
@@ -44,8 +43,7 @@ app.use('/api', (req, res, next) => {
 
 const apiAliases = [
   '/auth', '/profile', '/projects', '/experience', '/tools', '/skills',
-  '/contact', '/settings', '/upload', '/stats', '/events', '/certifications',
-  '/content-history'
+  '/contact', '/settings', '/upload', '/stats', '/events', '/certifications'
 ];
 app.use(async (req, res, next) => {
   const isApiRequest = req.path.startsWith('/api') || req.path === '/health' ||
@@ -89,8 +87,7 @@ const apiRoutes = [
   ['/api/upload', '/upload', uploadRoutes],
   ['/api/stats', '/stats', statsRoutes],
   ['/api/events', '/events', eventsRoutes],
-  ['/api/certifications', '/certifications', certificationsRoutes],
-  ['/api/content-history', '/content-history', contentHistoryRoutes],
+  ['/api/certifications', '/certifications', certificationsRoutes]
 ];
 
 for (const [apiPath, altPath, router] of apiRoutes) {
