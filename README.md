@@ -28,7 +28,8 @@ unavailable, CMS API requests and the health endpoint return `503` instead of ac
 writes.
 
 1. Apply `supabase/migrations/20261011000000_cms_persistence.sql` to the Supabase project using
-   the Supabase SQL Editor (or your normal migration workflow).
+   the Supabase SQL Editor (or your normal migration workflow), then apply
+   `supabase/migrations/20261012000000_supabase_upload_storage.sql` to create the public upload bucket.
 2. In Vercel project settings, set `SUPABASE_URL` to the project's API URL and
    `SUPABASE_SERVICE_ROLE_KEY` to its service-role key. Keep that key server-side; do not use it
    as a `VITE_*` variable or expose it to the browser. Also set a unique `JWT_SECRET` and a strong
@@ -41,12 +42,12 @@ writes.
 
 Local development continues to use `server/portfolio.db` with Node.js 22.13 or newer.
 
-### Upload storage limitation
+### Uploaded files
 
-Uploaded files are still written to `/tmp/uploads` on Vercel. That filesystem is ephemeral, so
-upload files can disappear between function instances or deployments even though the CMS database
-is durable. Configure an object-storage provider and update the upload route before relying on
-persistent user-uploaded files; this change does not solve upload persistence.
+Local development stores uploads under `public/uploads`. Vercel uploads use the `portfolio-uploads`
+Supabase Storage bucket and return durable public URLs. Apply the storage migration above before
+uploading files to a Vercel deployment. Previously uploaded files whose URLs start with `/uploads/`
+were stored on Vercel's temporary filesystem and may need to be uploaded again.
 
 ## Verification
 
