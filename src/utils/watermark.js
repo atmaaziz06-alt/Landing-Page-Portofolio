@@ -34,18 +34,10 @@ export async function applyWatermark(file, category) {
     context.strokeStyle = 'rgba(0, 0, 0, 0.45)';
     context.fillStyle = 'rgba(255, 255, 255, 0.85)';
 
-    const spacingX = Math.max(280, Math.round(canvas.width * 0.58));
-    const spacingY = Math.max(190, Math.round(canvas.height * 0.48));
-    for (let y = -spacingY; y <= canvas.height + spacingY; y += spacingY) {
-      for (let x = -spacingX; x <= canvas.width + spacingX; x += spacingX) {
-        context.save();
-        context.translate(x, y);
-        context.rotate(-Math.PI / 4);
-        context.strokeText(WATERMARK_TEXT, 0, 0);
-        context.fillText(WATERMARK_TEXT, 0, 0);
-        context.restore();
-      }
-    }
+    context.translate(canvas.width / 2, canvas.height / 2);
+    context.rotate(-Math.PI / 4);
+    context.strokeText(WATERMARK_TEXT, 0, 0);
+    context.fillText(WATERMARK_TEXT, 0, 0);
     context.restore();
 
     const watermarkedBlob = await new Promise((resolve, reject) => {

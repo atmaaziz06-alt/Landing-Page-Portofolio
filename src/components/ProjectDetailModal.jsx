@@ -112,6 +112,11 @@ export default function ProjectDetailModal({ project, onClose }) {
                 controls
                 playsInline
                 preload="metadata"
+                controlsList="nodownload noplaybackrate"
+                disablePictureInPicture
+                disableRemotePlayback
+                draggable={false}
+                onContextMenu={(event) => event.preventDefault()}
                 className="w-full h-full object-contain"
               />
               {isProtected && <ProjectWatermark />}

@@ -22,7 +22,11 @@ export default function ProjectCard({ project, onClick, className = '' }) {
       className={`group relative flex flex-col rounded-[26px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-3.5 sm:p-4 cursor-pointer hover:shadow-subtle transition-shadow duration-300 focus:outline-none focus:ring-2 focus:ring-[#E66F52] overflow-hidden ${className}`}
     >
       {/* Image Container 4:3 with overflow hidden */}
-      <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-[#F6E7DF] mb-4 flex items-center justify-center">
+      <div
+        className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-[#F6E7DF] mb-4 flex items-center justify-center"
+        onContextMenu={isProtectedProjectCategory(project.category) ? (event) => event.preventDefault() : undefined}
+        onDragStart={isProtectedProjectCategory(project.category) ? (event) => event.preventDefault() : undefined}
+      >
         {isVideoUrl(project.image) ? (
           <>
             <video
@@ -33,6 +37,10 @@ export default function ProjectCard({ project, onClick, className = '' }) {
               loop
               playsInline
               preload="metadata"
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
+              disableRemotePlayback
+              draggable={false}
               className="w-full h-full object-contain"
             />
             {isProtectedProjectCategory(project.category) && <ProjectWatermark />}
