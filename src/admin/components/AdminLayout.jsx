@@ -90,11 +90,15 @@ export default function AdminLayout() {
         <div className="p-6 border-b border-[rgba(23,23,23,0.06)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#E66F52] text-white flex items-center justify-center font-bold text-lg shadow-sm">
-              V
+              <img 
+                src="/assets/images/pp admin.jpg" 
+                alt="Profile Picture" 
+                className="w-10 h-10 rounded-2xl object-cover" 
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-base tracking-tight text-[#171717]">Vezta CMS</span>
+                <span className="font-bold text-base tracking-tight text-[#171717]">Vezta Studio</span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#E66F52]/15 text-[#E66F52]">
                   Admin
                 </span>

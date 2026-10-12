@@ -111,7 +111,7 @@ export default function Login() {
                 htmlFor="identifier"
                 className="block text-xs font-semibold text-[#171717] mb-2 uppercase tracking-wider"
               >
-                Email / Username
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5F5A57]">
@@ -137,7 +137,7 @@ export default function Login() {
                 htmlFor="password"
                 className="block text-xs font-semibold text-[#171717] mb-2 uppercase tracking-wider"
               >
-                Kata Sandi
+                Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5F5A57]">
@@ -186,10 +186,6 @@ export default function Login() {
 
           {/* Quick Credential Hint for Local Setup */}
           <div className="mt-8 pt-6 border-t border-[rgba(23,23,23,0.06)] text-center">
-            <p className="text-[11px] text-[#5F5A57]">
-              Akun admin: <span className="font-semibold text-[#171717]">kepo@gmail.com</span> /{' '}
-              <span className="font-semibold text-[#171717]">Kepo</span>
-            </p>
           </div>
         </div>
 
