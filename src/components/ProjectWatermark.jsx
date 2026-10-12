@@ -9,17 +9,17 @@ export default function ProjectWatermark({ category }) {
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 z-[5] overflow-hidden ${isPatterned ? 'grid grid-cols-3 grid-rows-4 place-items-center' : 'flex items-center justify-center'}`}
+      className={`pointer-events-none absolute inset-0 z-[15] overflow-hidden ${isPatterned ? 'grid grid-cols-4 grid-rows-5 place-items-center' : 'flex items-center justify-center'}`}
     >
       {(isPatterned ? WATERMARK_TILES : [0]).map((tile) => (
         <span
           key={tile}
-          className={`whitespace-nowrap -rotate-[28deg] font-medium uppercase text-white/70 ${isPatterned
-            ? 'text-[clamp(9px,1vw,15px)] tracking-[0.06em]'
-            : 'text-[clamp(16px,2vw,30px)] tracking-[0.1em]'}`}
+          className={`whitespace-nowrap -rotate-[28deg] font-normal uppercase text-white/70 ${isPatterned
+            ? 'text-[clamp(8px,0.8vw,12px)] tracking-[0.05em]'
+            : 'text-[clamp(12px,1.4vw,20px)] tracking-[0.08em]'}`}
           style={{
-            WebkitTextStroke: '0.45px rgba(20, 20, 20, 0.55)',
-            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)'
+            WebkitTextStroke: '0.3px rgba(20, 20, 20, 0.45)',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
           }}
         >
           Vezta Studio
