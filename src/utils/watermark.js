@@ -26,16 +26,16 @@ export async function applyWatermark(file, category) {
 
     context.drawImage(bitmap, 0, 0);
     context.save();
-    context.globalAlpha = 0.2;
-    context.font = `600 ${Math.max(20, Math.min(56, Math.round(canvas.width * 0.035)))}px sans-serif`;
+    context.globalAlpha = 0.42;
+    context.font = `700 ${Math.max(24, Math.min(72, Math.round(canvas.width * 0.045)))}px sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.lineWidth = 2;
-    context.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    context.lineWidth = 3;
+    context.strokeStyle = 'rgba(0, 0, 0, 0.8)';
     context.fillStyle = 'rgba(255, 255, 255, 0.95)';
 
-    const spacingX = Math.max(220, Math.round(canvas.width * 0.32));
-    const spacingY = Math.max(150, Math.round(canvas.height * 0.24));
+    const spacingX = Math.max(220, Math.round(canvas.width * 0.34));
+    const spacingY = Math.max(150, Math.round(canvas.height * 0.28));
     for (let y = -canvas.height; y <= canvas.height * 2; y += spacingY) {
       for (let x = -canvas.width; x <= canvas.width * 2; x += spacingX) {
         context.save();

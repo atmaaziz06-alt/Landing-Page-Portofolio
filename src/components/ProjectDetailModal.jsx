@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, ArrowUpRight, CheckCircle2, Calendar, User, Layers, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isProtectedProjectCategory, isVideoUrl } from '../utils/media';
 import ContentProtection from './ContentProtection';
+import ProjectWatermark from './ProjectWatermark';
 
 export default function ProjectDetailModal({ project, onClose }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -103,15 +104,18 @@ export default function ProjectDetailModal({ project, onClose }) {
           className="w-full h-[300px] sm:h-[460px] md:h-[500px] rounded-[22px] overflow-hidden border border-[rgba(23,23,23,0.08)] shadow-subtle bg-[#171717]/5 flex items-center justify-center select-none group/gallery mb-3"
         >
           {isVideoUrl(currentImage) ? (
-            <video
-              key={currentImage}
-              src={currentImage}
-              aria-label={`${project.title} video ${activeImageIndex + 1}`}
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full h-full object-contain"
-            />
+            <>
+              <video
+                key={currentImage}
+                src={currentImage}
+                aria-label={`${project.title} video ${activeImageIndex + 1}`}
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-contain"
+              />
+              {isProtected && <ProjectWatermark />}
+            </>
           ) : project.category === 'Desain Grafis' ? (
             <>
               {/* Ambient blurred backdrop so frame matches active slide */}
