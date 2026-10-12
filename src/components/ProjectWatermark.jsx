@@ -9,14 +9,26 @@ export default function ProjectWatermark({ category }) {
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 z-[15] overflow-hidden ${isPatterned ? 'grid grid-cols-4 grid-rows-5 place-items-center' : 'flex items-center justify-center'}`}
+      className={`pointer-events-none absolute inset-0 z-[15] overflow-hidden ${isPatterned ? '' : 'flex items-center justify-center'}`}
     >
-      {(isPatterned ? WATERMARK_TILES : [0]).map((tile) => (
+      {isPatterned ? (
+        <div className="absolute inset-[-25%] grid grid-cols-3 grid-rows-4 place-items-center gap-x-6 gap-y-10 -rotate-[28deg]">
+          {WATERMARK_TILES.map((tile) => (
+            <span
+              key={tile}
+              className="whitespace-nowrap text-[clamp(9px,0.85vw,13px)] font-normal uppercase tracking-[0.05em] text-white/70"
+              style={{
+                WebkitTextStroke: '0.3px rgba(20, 20, 20, 0.45)',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
+              }}
+            >
+              Vezta Studio
+            </span>
+          ))}
+        </div>
+      ) : (
         <span
-          key={tile}
-          className={`whitespace-nowrap -rotate-[28deg] font-normal uppercase text-white/70 ${isPatterned
-            ? 'text-[clamp(8px,0.8vw,12px)] tracking-[0.05em]'
-            : 'text-[clamp(12px,1.4vw,20px)] tracking-[0.08em]'}`}
+          className="whitespace-nowrap -rotate-[28deg] text-[clamp(12px,1.4vw,20px)] font-normal uppercase tracking-[0.08em] text-white/70"
           style={{
             WebkitTextStroke: '0.3px rgba(20, 20, 20, 0.45)',
             textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
@@ -24,7 +36,7 @@ export default function ProjectWatermark({ category }) {
         >
           Vezta Studio
         </span>
-      ))}
+      )}
     </div>
   );
 }
