@@ -30,7 +30,8 @@ import {
 } from 'lucide-react';
 import ImageCropModal from '../components/ImageCropModal';
 import { usePortfolioData } from '../../context/PortfolioDataContext';
-import { AI_VIDEO_CATEGORY, isVideoUrl } from '../../utils/media';
+import { AI_VIDEO_CATEGORY, isProtectedProjectCategory, isVideoUrl } from '../../utils/media';
+import { applyWatermark } from '../../utils/watermark';
 
 const MAX_GALLERY_IMAGE_SIZE = 4 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
@@ -305,7 +306,8 @@ export default function ProjectsPage() {
 
     setUploadingThumb(true);
     try {
-      const res = await api.uploadFile(file);
+      const uploadFile = await applyWatermark(file, formData.category);
+      const res = await api.uploadFile(uploadFile);
       if (res.success && res.url) {
         setFormData((prev) => ({
           ...prev,
@@ -352,7 +354,8 @@ export default function ProjectsPage() {
     try {
       for (const file of files) {
         try {
-          const res = await api.uploadFile(file);
+          const uploadFile = await applyWatermark(file, formData.category);
+          const res = await api.uploadFile(uploadFile);
           if (!res?.success || !res.url) {
             throw new Error(res?.message || 'Server tidak mengembalikan URL media.');
           }
@@ -1291,19 +1294,20 @@ export default function ProjectsPage() {
                 {previewProject.description}
               </p>
 
-              {previewProject.link && (
-                <div className="pt-2">
-                  <a
-                    href={previewProject.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] text-white text-xs font-semibold"
-                  >
-                    <span>{previewProject.linkLabel || 'Lihat Project'}</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </a>
-                </div>
-              )}
+              {previewProject.link &&
+                !isProtectedProjectCategory(previewProject.category) && (
+                  <div className="pt-2">
+                    <a
+                      href={previewProject.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E66F52] text-white text-xs font-semibold"
+                    >
+                      <span>{previewProject.linkLabel || 'Lihat Project'}</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 // server/routes/upload.js
 import express from 'express';
 import multer from 'multer';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -117,6 +118,78 @@ async function cleanupTemporaryFile(file) {
     });
   }
 }
+
+// POST /api/upload/sign (Create a short-lived direct video upload URL)
+router.post('/sign', authenticateToken, async (req, res) => {
+  if (!useSupabaseStorage) {
+    return res.status(501).json({
+      success: false,
+      code: 'DIRECT_UPLOAD_UNAVAILABLE',
+      message: 'Direct uploads are only available when Supabase Storage is enabled.'
+    });
+  }
+
+  const { name, type, size } = req.body || {};
+  const extension = path.extname(typeof name === 'string' ? name : '').toLowerCase();
+  const allowedVideoTypes = new Map([
+    ['.mp4', 'video/mp4'],
+    ['.webm', 'video/webm']
+  ]);
+
+  if (!allowedVideoTypes.has(extension) || allowedVideoTypes.get(extension) !== type) {
+    return res.status(400).json({ success: false, message: 'Only MP4 or WebM videos are allowed.' });
+  }
+  if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_UPLOAD_SIZE) {
+    return res.status(400).json({ success: false, message: 'Video size must be between 1 byte and 100 MB.' });
+  }
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return res.status(503).json({
+      success: false,
+      message: 'Supabase Storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+    });
+  }
+
+  const baseName = path.basename(name, extension)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30) || 'video';
+  const filename = `${baseName}-${randomUUID()}${extension}`;
+  const encodedFilename = encodeURIComponent(filename);
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/storage/v1/object/upload/sign/${storageBucket}/${encodedFilename}`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: supabaseServiceRoleKey,
+          Authorization: 'Bear' + 'er ' + supabaseServiceRoleKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ upsert: false }),
+        signal: AbortSignal.timeout(20000)
+      }
+    );
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.token) {
+      const message = payload?.message || payload?.error || `Supabase signed upload URL request failed (${response.status}).`;
+      console.error('[Uploads] Could not create signed upload URL:', message);
+      return res.status(response.status >= 500 ? 502 : response.status || 502).json({
+        success: false,
+        message
+      });
+    }
+
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${storageBucket}/${encodedFilename}?token=${encodeURIComponent(payload.token)}`;
+    const url = `${supabaseUrl}/storage/v1/object/public/${storageBucket}/${encodedFilename}`;
+    return res.json({ success: true, uploadUrl, url, filename, size });
+  } catch (err) {
+    console.error('[Uploads] Could not create signed upload URL:', err);
+    return res.status(502).json({ success: false, message: 'Could not prepare direct upload: ' + err.message });
+  }
+});
 
 // POST /api/upload (Single file, Protected)
 router.post('/', authenticateToken, upload.single('file'), async (req, res) => {

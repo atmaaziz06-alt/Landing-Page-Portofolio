@@ -374,6 +374,37 @@ export const api = {
 
   // Upload file
   async uploadFile(file) {
+    if (file.type === 'video/mp4' || file.type === 'video/webm') {
+      try {
+        const signResponse = await fetch(`${API_BASE}/upload/sign`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ name: file.name, type: file.type, size: file.size })
+        });
+        const signedUpload = await handleResponse(signResponse);
+        const uploadResponse = await fetch(signedUpload.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file
+        });
+
+        if (!uploadResponse.ok) {
+          const message = await uploadResponse.text();
+          throw new Error(message || `Direct upload failed with status ${uploadResponse.status}.`);
+        }
+
+        return {
+          success: true,
+          message: 'File uploaded successfully',
+          url: signedUpload.url,
+          filename: signedUpload.filename,
+          size: file.size
+        };
+      } catch (err) {
+        if (err.data?.code !== 'DIRECT_UPLOAD_UNAVAILABLE') throw err;
+      }
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 

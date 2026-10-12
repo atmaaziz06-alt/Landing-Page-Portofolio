@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ArrowUpRight, CheckCircle2, Calendar, User, Layers, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isVideoUrl } from '../utils/media';
+import { isProtectedProjectCategory, isVideoUrl } from '../utils/media';
+import ContentProtection from './ContentProtection';
 
 export default function ProjectDetailModal({ project, onClose }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -11,6 +12,7 @@ export default function ProjectDetailModal({ project, onClose }) {
 
   const totalImages = galleryImages.length;
   const currentImage = galleryImages[activeImageIndex] || project?.image;
+  const isProtected = isProtectedProjectCategory(project?.category);
 
   const handlePrevImage = useCallback((e) => {
     if (e) e.stopPropagation();
@@ -95,7 +97,11 @@ export default function ProjectDetailModal({ project, onClose }) {
         {/* ============================================================ */}
         {/* E-COMMERCE STYLE INTERACTIVE SHOWCASE GALLERY                */}
         {/* ============================================================ */}
-        <div className="relative w-full h-[300px] sm:h-[460px] md:h-[500px] rounded-[22px] overflow-hidden border border-[rgba(23,23,23,0.08)] shadow-subtle bg-[#171717]/5 flex items-center justify-center select-none group/gallery mb-3">
+        <ContentProtection
+          key={isProtected ? 'protected' : 'unprotected'}
+          enabled={isProtected}
+          className="w-full h-[300px] sm:h-[460px] md:h-[500px] rounded-[22px] overflow-hidden border border-[rgba(23,23,23,0.08)] shadow-subtle bg-[#171717]/5 flex items-center justify-center select-none group/gallery mb-3"
+        >
           {isVideoUrl(currentImage) ? (
             <video
               key={currentImage}
@@ -122,7 +128,7 @@ export default function ProjectDetailModal({ project, onClose }) {
                 key={currentImage}
                 src={currentImage}
                 alt={`${project.title} slide ${activeImageIndex + 1}`}
-                className="relative z-10 max-h-full max-w-full object-contain p-3 sm:p-5 drop-shadow-xl transition-all duration-300 animate-in fade-in"
+                className={`relative z-10 max-h-full max-w-full object-contain p-3 sm:p-5 drop-shadow-xl transition-all duration-300 animate-in fade-in ${isProtected ? 'protected-media' : ''}`}
               />
             </>
           ) : (
@@ -130,7 +136,7 @@ export default function ProjectDetailModal({ project, onClose }) {
               key={currentImage}
               src={currentImage}
               alt={`${project.title} slide ${activeImageIndex + 1}`}
-              className="w-full h-full object-contain transition-all duration-300 animate-in fade-in"
+              className={`w-full h-full object-contain transition-all duration-300 animate-in fade-in ${isProtected ? 'protected-media' : ''}`}
             />
           )}
 
@@ -163,7 +169,7 @@ export default function ProjectDetailModal({ project, onClose }) {
               </div>
             </>
           )}
-        </div>
+        </ContentProtection>
 
         {/* E-Commerce Thumbnails Strip Below Main Showcase */}
         {totalImages > 1 && (
@@ -275,8 +281,7 @@ export default function ProjectDetailModal({ project, onClose }) {
             >
               Tutup
             </button>
-            {/* Note: External link button is hidden for category 'Desain Grafis' as requested */}
-            {project.link && project.category !== 'Desain Grafis' && (
+            {project.link && !isProtected && (
               <a
                 href={project.link}
                 target="_blank"

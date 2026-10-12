@@ -29,6 +29,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.content-protection {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.content-protection img,
+.content-protection video {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.content-protection .protected-media {
+  pointer-events: none;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -248,5 +266,4 @@ body {
     opacity: 0.35;
   }
 }
-
 
