@@ -28,8 +28,9 @@ writes.
 
 1. Apply `supabase/migrations/20261011000000_cms_persistence.sql` to the Supabase project using
    the Supabase SQL Editor (or your normal migration workflow), then apply
-   `supabase/migrations/20261012000000_supabase_upload_storage.sql` to create the public upload bucket
-   and `supabase/migrations/20261013000000_remove_content_history.sql` to remove the obsolete history
+   `supabase/migrations/20261012000000_supabase_upload_storage.sql` to create the public upload bucket,
+   `supabase/migrations/20261012001000_allow_video_uploads.sql` to allow MP4/WebM uploads, and
+   `supabase/migrations/20261013000000_remove_content_history.sql` to remove the obsolete history
    table and RPC functions.
 2. In Vercel project settings, set `SUPABASE_URL` to the project's API URL and
    `SUPABASE_SERVICE_ROLE_KEY` to its service-role key. Keep that key server-side; do not use it
@@ -47,8 +48,9 @@ Local development continues to use `server/portfolio.db` with Node.js 22.13 or n
 
 Local development stores uploads under `public/uploads`. Vercel uploads use the `portfolio-uploads`
 Supabase Storage bucket and return durable public URLs. Apply the storage migration above before
-uploading files to a Vercel deployment. Previously uploaded files whose URLs start with `/uploads/`
-were stored on Vercel's temporary filesystem and may need to be uploaded again.
+uploading files to a Vercel deployment. Apply the video upload migration as well before uploading
+MP4 or WebM files. Previously uploaded files whose URLs start with `/uploads/` were stored on
+Vercel's temporary filesystem and may need to be uploaded again.
 
 ## Verification
 

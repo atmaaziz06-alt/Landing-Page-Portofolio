@@ -389,8 +389,19 @@ export const api = {
         });
 
         if (!uploadResponse.ok) {
-          const message = await uploadResponse.text();
-          throw new Error(message || `Direct upload failed with status ${uploadResponse.status}.`);
+          const responseText = await uploadResponse.text();
+          let payload;
+          try {
+            payload = JSON.parse(responseText);
+          } catch {
+            payload = null;
+          }
+
+          if (uploadResponse.status === 415 && payload?.error === 'invalid_mime_type') {
+            throw new Error('Supabase Storage belum mengizinkan tipe video ini. Terapkan migration 20261012001000_allow_video_uploads.sql pada project Supabase.');
+          }
+
+          throw new Error(payload?.message || responseText || `Direct upload failed with status ${uploadResponse.status}.`);
         }
 
         return {
