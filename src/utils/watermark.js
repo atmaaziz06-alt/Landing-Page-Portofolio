@@ -26,18 +26,18 @@ export async function applyWatermark(file, category) {
 
     context.drawImage(bitmap, 0, 0);
     context.save();
-    context.globalAlpha = 0.42;
-    context.font = `700 ${Math.max(24, Math.min(72, Math.round(canvas.width * 0.045)))}px sans-serif`;
+    context.globalAlpha = 0.24;
+    context.font = `500 ${Math.max(20, Math.min(56, Math.round(canvas.width * 0.035)))}px sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.lineWidth = 3;
-    context.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    context.lineWidth = 1.5;
+    context.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    context.fillStyle = 'rgba(255, 255, 255, 0.85)';
 
-    const spacingX = Math.max(220, Math.round(canvas.width * 0.34));
-    const spacingY = Math.max(150, Math.round(canvas.height * 0.28));
-    for (let y = -canvas.height; y <= canvas.height * 2; y += spacingY) {
-      for (let x = -canvas.width; x <= canvas.width * 2; x += spacingX) {
+    const spacingX = Math.max(280, Math.round(canvas.width * 0.58));
+    const spacingY = Math.max(190, Math.round(canvas.height * 0.48));
+    for (let y = -spacingY; y <= canvas.height + spacingY; y += spacingY) {
+      for (let x = -spacingX; x <= canvas.width + spacingX; x += spacingX) {
         context.save();
         context.translate(x, y);
         context.rotate(-Math.PI / 4);
