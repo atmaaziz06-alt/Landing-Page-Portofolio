@@ -12,6 +12,10 @@ export function isProtectedProjectCategory(category) {
   return PROTECTED_PROJECT_CATEGORIES.has(category);
 }
 
+export function isGraphicDesignProjectCategory(category) {
+  return category === GRAPHIC_DESIGN_CATEGORY || category === 'Graphic Design';
+}
+
 export function isVideoUrl(url) {
   if (typeof url !== 'string') return false;
 

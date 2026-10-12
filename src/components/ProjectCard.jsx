@@ -43,7 +43,6 @@ export default function ProjectCard({ project, onClick, className = '' }) {
               draggable={false}
               className="w-full h-full object-contain"
             />
-            {isProtectedProjectCategory(project.category) && <ProjectWatermark />}
           </>
         ) : project.category === 'Desain Grafis' ? (
           <>
@@ -76,6 +75,8 @@ export default function ProjectCard({ project, onClick, className = '' }) {
             height="450"
           />
         )}
+
+        {isProtectedProjectCategory(project.category) && <ProjectWatermark category={project.category} />}
 
         {/* Floating Category Badge with backdrop blur */}
         <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-10">

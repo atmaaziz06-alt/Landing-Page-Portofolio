@@ -1,4 +1,4 @@
-import { isProtectedProjectCategory } from './media';
+import { isGraphicDesignProjectCategory, isProtectedProjectCategory } from './media';
 
 const WATERMARK_TEXT = 'Vezta Studio';
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -26,18 +26,34 @@ export async function applyWatermark(file, category) {
 
     context.drawImage(bitmap, 0, 0);
     context.save();
-    context.globalAlpha = 0.24;
-    context.font = `500 ${Math.max(20, Math.min(56, Math.round(canvas.width * 0.035)))}px sans-serif`;
+    context.globalAlpha = 0.34;
+    context.font = `600 ${Math.max(32, Math.min(88, Math.round(canvas.width * 0.055)))}px sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.lineWidth = 1.5;
-    context.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-    context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    context.lineWidth = 2;
+    context.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    context.fillStyle = 'rgba(255, 255, 255, 0.95)';
 
-    context.translate(canvas.width / 2, canvas.height / 2);
-    context.rotate(-Math.PI / 4);
-    context.strokeText(WATERMARK_TEXT, 0, 0);
-    context.fillText(WATERMARK_TEXT, 0, 0);
+    if (isGraphicDesignProjectCategory(category)) {
+      const spacingX = Math.max(280, Math.round(canvas.width * 0.5));
+      const spacingY = Math.max(190, Math.round(canvas.height * 0.36));
+
+      for (let y = -spacingY; y <= canvas.height + spacingY; y += spacingY) {
+        for (let x = -spacingX; x <= canvas.width + spacingX; x += spacingX) {
+          context.save();
+          context.translate(x, y);
+          context.rotate(-Math.PI / 4);
+          context.strokeText(WATERMARK_TEXT, 0, 0);
+          context.fillText(WATERMARK_TEXT, 0, 0);
+          context.restore();
+        }
+      }
+    } else {
+      context.translate(canvas.width / 2, canvas.height / 2);
+      context.rotate(-Math.PI / 4);
+      context.strokeText(WATERMARK_TEXT, 0, 0);
+      context.fillText(WATERMARK_TEXT, 0, 0);
+    }
     context.restore();
 
     const watermarkedBlob = await new Promise((resolve, reject) => {

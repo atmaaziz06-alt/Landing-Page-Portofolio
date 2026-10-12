@@ -119,7 +119,6 @@ export default function ProjectDetailModal({ project, onClose }) {
                 onContextMenu={(event) => event.preventDefault()}
                 className="w-full h-full object-contain"
               />
-              {isProtected && <ProjectWatermark />}
             </>
           ) : project.category === 'Desain Grafis' ? (
             <>
@@ -148,6 +147,8 @@ export default function ProjectDetailModal({ project, onClose }) {
               className={`w-full h-full object-contain transition-all duration-300 animate-in fade-in ${isProtected ? 'protected-media' : ''}`}
             />
           )}
+
+          {isProtected && <ProjectWatermark category={project.category} />}
 
           {/* E-Commerce Floating Prev & Next Buttons */}
           {totalImages > 1 && (
