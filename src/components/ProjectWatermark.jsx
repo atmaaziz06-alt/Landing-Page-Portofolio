@@ -14,12 +14,12 @@ export default function ProjectWatermark({ category }) {
       {(isPatterned ? WATERMARK_TILES : [0]).map((tile) => (
         <span
           key={tile}
-          className={`whitespace-nowrap -rotate-[28deg] font-bold uppercase text-white/80 ${isPatterned
-            ? 'text-[clamp(12px,1.6vw,22px)] tracking-[0.08em]'
-            : 'text-[clamp(20px,3vw,44px)] tracking-[0.12em]'}`}
+          className={`whitespace-nowrap -rotate-[28deg] font-medium uppercase text-white/70 ${isPatterned
+            ? 'text-[clamp(9px,1vw,15px)] tracking-[0.06em]'
+            : 'text-[clamp(16px,2vw,30px)] tracking-[0.1em]'}`}
           style={{
-            WebkitTextStroke: '1px rgba(20, 20, 20, 0.75)',
-            textShadow: '0 1px 4px rgba(0, 0, 0, 0.75)'
+            WebkitTextStroke: '0.45px rgba(20, 20, 20, 0.55)',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)'
           }}
         >
           Vezta Studio
