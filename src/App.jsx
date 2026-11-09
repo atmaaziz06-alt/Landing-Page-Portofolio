@@ -34,16 +34,25 @@ export default function App() {
       <Navbar />
 
       {dataError && (
-        <div role="alert" className="mx-auto mt-24 w-full max-w-5xl px-5">
-          <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 sm:flex-row sm:items-center sm:justify-between">
-            <p>Konten terbaru gagal dimuat dari server: {dataError.message}</p>
-            <button
-              type="button"
-              onClick={() => refreshData()}
-              className="shrink-0 rounded-full bg-red-700 px-4 py-2 font-medium text-white hover:bg-red-800"
-            >
-              Coba lagi
-            </button>
+        <div role="alert" aria-live="assertive" className="mx-auto mt-24 w-full max-w-[1600px] px-5">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-200 bg-[#fff5f3] shadow-sm shadow-red-100/70">
+              <span className="h-4 w-4 rounded-full bg-[#e54b3d]" aria-hidden="true" />
+            </div>
+
+            <div className="flex flex-1 flex-col gap-3 rounded-[26px] border border-[#f2b8b0] bg-[#f7e4e0] p-4 text-base leading-relaxed text-[#7f2a2a] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="max-w-[95%] text-[0.98rem] font-medium text-[#7b2727] sm:text-[1.2rem]">
+                Konten terbaru gagal dimuat dari server: {dataError.message}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => refreshData()}
+                className="inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#d74338] p-2 text-center text-[0.82rem] font-bold leading-[1.05rem] text-white shadow-md shadow-red-300/60 transition hover:bg-[#c53a31] focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
+              >
+                Coba lagi
+              </button>
+            </div>
           </div>
         </div>
       )}
