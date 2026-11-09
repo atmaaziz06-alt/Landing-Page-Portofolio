@@ -35,20 +35,20 @@ export default function App() {
 
       {dataError && (
         <div role="alert" aria-live="assertive" className="mx-auto mt-24 w-full max-w-[1600px] px-5">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-200 bg-[#fff5f3] shadow-sm shadow-red-100/70">
-              <span className="h-4 w-4 rounded-full bg-[#e54b3d]" aria-hidden="true" />
+          <div className="flex items-center gap-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#f3b1aa] bg-[#f7efed]">
+              <span className="h-4 w-4 rounded-full bg-[#e14d3d]" aria-hidden="true" />
             </div>
 
-            <div className="flex flex-1 flex-col gap-3 rounded-[26px] border border-[#f2b8b0] bg-[#f7e4e0] p-4 text-base leading-relaxed text-[#7f2a2a] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="max-w-[95%] text-[0.98rem] font-medium text-[#7b2727] sm:text-[1.2rem]">
+            <div className="flex w-full items-center justify-between gap-4 rounded-[28px] border border-[#f0b8b2] bg-[#f6e1de] px-4 py-4 text-[#5d2a2a] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)] sm:px-6">
+              <p className="max-w-[calc(100%-96px)] text-[1.05rem] font-medium leading-relaxed text-[#6a2a2a] sm:text-[1.45rem] sm:leading-[1.5]">
                 Konten terbaru gagal dimuat dari server: {dataError.message}
               </p>
 
               <button
                 type="button"
                 onClick={() => refreshData()}
-                className="inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#d74338] p-2 text-center text-[0.82rem] font-bold leading-[1.05rem] text-white shadow-md shadow-red-300/60 transition hover:bg-[#c53a31] focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
+                className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#d5483a] px-3 text-center text-[1.05rem] font-bold leading-tight text-white shadow-[0_6px_18px_rgba(213,73,58,0.28)] transition hover:bg-[#c53d32] focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2"
               >
                 Coba lagi
               </button>
