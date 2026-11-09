@@ -4,6 +4,7 @@ import { usePortfolioData } from '../context/PortfolioDataContext';
 import Stats from './Stats';
 import Reveal from './Reveal';
 import TiltCard from './TiltCard';
+import { SkeletonMedia } from './Skeleton';
 
 export default function About() {
   const { profile } = usePortfolioData();
@@ -28,12 +29,14 @@ export default function About() {
                 glare={true}
                 className="relative w-full aspect-[4/5] rounded-[28px] overflow-hidden border-4 border-white/70 shadow-subtle bg-[#F8EEE8] group"
               >
-                <img
-                  src={profile?.aboutImageUrl || '/assets/images/about-user.jpg'}
-                  alt={profile?.name || 'Raditya Atma Aziz'}
-                  className="w-full h-full object-cover object-top img-zoom"
-                  loading="lazy"
-                />
+                <SkeletonMedia src={profile?.aboutImageUrl || '/assets/images/about-user.jpg'}>
+                  <img
+                    src={profile?.aboutImageUrl || '/assets/images/about-user.jpg'}
+                    alt={profile?.name || 'Raditya Atma Aziz'}
+                    className="w-full h-full object-cover object-top img-zoom"
+                    loading="lazy"
+                  />
+                </SkeletonMedia>
 
                 {/* Floating Studio Badge */}
                 <div className="absolute bottom-5 left-5 right-5 p-4 rounded-[18px] glass-card border border-white/80 shadow-card animate-float-slow">

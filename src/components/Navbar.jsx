@@ -74,7 +74,7 @@ export default function Navbar() {
           <a
             href="#contact"
             onClick={(e) => handleLinkClick(e, '#contact')}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white/80 hover:bg-white text-xs sm:text-sm font-medium text-[#171717] border border-[rgba(23,23,23,0.1)] shadow-card hover:shadow-subtle transition-all duration-200 hover-lift group"
+            className="pressable-primary inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white/80 hover:bg-white text-xs sm:text-sm font-medium text-[#171717] border border-[rgba(23,23,23,0.1)] shadow-card hover:shadow-subtle transition-all duration-200 hover-lift group"
           >
             <span>Let's talk</span>
             <ArrowUpRight className="w-4 h-4 text-[#5F5A57] group-hover:text-[#E66F52] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
@@ -111,7 +111,7 @@ export default function Navbar() {
               <a
                 href="#contact"
                 onClick={(e) => handleLinkClick(e, '#contact')}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#E66F52] text-white font-medium text-sm shadow-md hover:bg-[#D65F42] transition-colors"
+                className="pressable-primary w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#E66F52] text-white font-medium text-sm shadow-md hover:bg-[#D65F42] transition-colors"
               >
                 <span>Let's talk</span>
                 <ArrowUpRight className="w-4 h-4" />

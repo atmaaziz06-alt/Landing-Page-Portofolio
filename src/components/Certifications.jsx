@@ -3,6 +3,7 @@ import { usePortfolioData } from '../context/PortfolioDataContext';
 import SectionHeading from './SectionHeading';
 import Reveal from './Reveal';
 import CertificationDetailModal from './CertificationDetailModal';
+import { SkeletonMedia } from './Skeleton';
 import { Award, ExternalLink, Calendar, CheckCircle2, Eye, FileCheck, ArrowUpRight } from 'lucide-react';
 
 export default function Certifications() {
@@ -103,18 +104,29 @@ export default function Certifications() {
             >
               <div
                 onClick={() => setActiveCert(item)}
-                className="group rounded-[32px] bg-white border border-[rgba(23,23,23,0.08)] hover:border-[#E66F52]/40 overflow-hidden shadow-xs hover:shadow-subtle transition-all duration-300 flex flex-col justify-between h-full hover-lift cursor-pointer relative"
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setActiveCert(item);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className="portfolio-card group rounded-[32px] bg-white border border-[rgba(23,23,23,0.08)] overflow-hidden shadow-xs flex flex-col justify-between h-full cursor-pointer relative"
               >
                 <div>
                   {/* Certificate Image Banner */}
                   {item.imageUrl ? (
                     <div className="w-full h-48 sm:h-52 overflow-hidden bg-neutral-100 relative group/img">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
+                      <SkeletonMedia src={item.imageUrl}>
+                        <img
+                          src={item.imageUrl}
+                          alt={item.title}
+                          className="img-zoom w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </SkeletonMedia>
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5 backdrop-blur-2xs">
                         <Eye className="w-4 h-4" />
                         <span>Klik untuk Lihat Selengkapnya</span>

@@ -3,6 +3,7 @@ import { ArrowRight, User, Download, Sparkles } from 'lucide-react';
 import { profileData as fallbackProfile } from '../data/profile';
 import { usePortfolioData } from '../context/PortfolioDataContext';
 import Reveal from './Reveal';
+import { SkeletonMedia } from './Skeleton';
 
 export default function Hero() {
   const { profile: dynamicProfile } = usePortfolioData();
@@ -101,7 +102,7 @@ export default function Hero() {
                 <a
                   href="#work"
                   onClick={scrollToWork}
-                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-sm sm:text-base font-medium shadow-card hover:shadow-float transition-all duration-300 hover-lift group"
+                  className="pressable-primary inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-sm sm:text-base font-medium shadow-card hover:shadow-float transition-all duration-300 hover-lift group"
                 >
                   <span>View my work</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-200" />
@@ -150,15 +151,17 @@ export default function Hero() {
                 transform: `rotateX(${portraitTilt.rotateX}deg) rotateY(${portraitTilt.rotateY}deg)`,
               }}
             >
-              <img
-                src={profileData.avatarUrl || '/assets/images/user-portrait.png'}
-                alt={`Portrait of ${profileData.name}, ${profileData.role}`}
-                className="w-full h-full object-cover scale-105 transition-transform duration-500 hover:scale-110"
-                style={{ objectPosition: 'center 15%' }}
-                loading="eager"
-                width="460"
-                height="460"
-              />
+              <SkeletonMedia src={profileData.avatarUrl || '/assets/images/user-portrait.png'}>
+                <img
+                  src={profileData.avatarUrl || '/assets/images/user-portrait.png'}
+                  alt={`Portrait of ${profileData.name}, ${profileData.role}`}
+                  className="w-full h-full object-cover scale-105 transition-transform duration-500 hover:scale-110"
+                  style={{ objectPosition: 'center 15%' }}
+                  loading="eager"
+                  width="460"
+                  height="460"
+                />
+              </SkeletonMedia>
             </div>
 
             {/* Floating Availability Card (Overlapping portrait with depth parallax) */}

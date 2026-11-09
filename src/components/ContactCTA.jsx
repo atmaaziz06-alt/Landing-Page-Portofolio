@@ -243,7 +243,7 @@ export default function ContactCTA() {
 
                     <button
                       type="submit"
-                      className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-sm font-medium shadow-card hover:shadow-float transition-all duration-200 hover-lift group cursor-pointer"
+                      className="pressable-primary w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#E66F52] hover:bg-[#D65F42] text-white text-sm font-medium shadow-card hover:shadow-float transition-all duration-200 hover-lift group cursor-pointer"
                     >
                       <span>Send inquiry</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

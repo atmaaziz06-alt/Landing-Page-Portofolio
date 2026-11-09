@@ -1,25 +1,24 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import TiltCard from './TiltCard';
 import { isProtectedProjectCategory, isVideoUrl } from '../utils/media';
 import ProjectWatermark from './ProjectWatermark';
+import { SkeletonMedia } from './Skeleton';
 
 export default function ProjectCard({ project, onClick, className = '' }) {
   return (
-    <TiltCard
-      maxTilt={6}
-      glare={true}
+    <div
       onClick={() => onClick(project)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onClick(project);
         }
       }}
       aria-label={`View details for ${project.title}`}
-      className={`group relative flex flex-col rounded-[26px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-3.5 sm:p-4 cursor-pointer hover:shadow-subtle transition-shadow duration-300 focus:outline-none focus:ring-2 focus:ring-[#E66F52] overflow-hidden ${className}`}
+      className={`portfolio-card group relative flex flex-col rounded-[26px] bg-[#FBEFE9] border border-[rgba(23,23,23,0.08)] p-3.5 sm:p-4 cursor-pointer shadow-card overflow-hidden ${className}`}
     >
       {/* Image Container 4:3 with overflow hidden */}
       <div
@@ -56,24 +55,28 @@ export default function ProjectCard({ project, onClick, className = '' }) {
             <div className="absolute inset-0 bg-black/[0.06] backdrop-blur-[2px]" />
 
             {/* Original uncropped poster / design */}
+            <SkeletonMedia src={project.image} className="relative z-[1]">
+              <img
+                src={project.image}
+                alt={project.title}
+                loading="lazy"
+                className="img-zoom w-full h-full object-contain p-2 sm:p-2.5 drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
+                width="600"
+                height="450"
+              />
+            </SkeletonMedia>
+          </>
+        ) : (
+          <SkeletonMedia src={project.image}>
             <img
               src={project.image}
               alt={project.title}
               loading="lazy"
-              className="relative z-[1] w-full h-full object-contain p-2 sm:p-2.5 drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
+              className="img-zoom w-full h-full object-contain"
               width="600"
               height="450"
             />
-          </>
-        ) : (
-          <img
-            src={project.image}
-            alt={project.title}
-            loading="lazy"
-            className="w-full h-full object-contain"
-            width="600"
-            height="450"
-          />
+          </SkeletonMedia>
         )}
 
         {isProtectedProjectCategory(project.category) && <ProjectWatermark category={project.category} />}
@@ -108,11 +111,11 @@ export default function ProjectCard({ project, onClick, className = '' }) {
             onClick(project);
           }}
           aria-label={`Buka detail ${project.title}`}
-          className="w-10 h-10 rounded-full bg-white/85 group-hover:bg-[#E66F52] border border-[rgba(23,23,23,0.08)] flex items-center justify-center transition-all duration-300 shadow-sm flex-shrink-0 group-hover:scale-105 cursor-pointer focus:outline-none"
+          className="w-10 h-10 rounded-full bg-white/85 group-hover:bg-[#E66F52] border border-[rgba(23,23,23,0.08)] flex items-center justify-center transition-all duration-300 shadow-sm flex-shrink-0 cursor-pointer"
         >
           <ArrowUpRight className="w-4 h-4 text-[#171717] group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
         </button>
       </div>
-    </TiltCard>
+    </div>
   );
 }
